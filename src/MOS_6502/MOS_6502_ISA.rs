@@ -183,7 +183,7 @@ pub trait Mos6502Isa {
     fn _addr_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
     fn _decode_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u8;
     fn _set_z_n(&mut self, val: u8);
-    fn _fetch_u16(&mut self, addr: u16) -> u16;
+    fn _fetch_u16(&self, addr: u16) -> u16;
     fn _decode_imm(&mut self) -> u8;
     fn _decode_zp(&mut self) -> u8;
     fn _addr_zp(&mut self) -> u16;
@@ -390,9 +390,11 @@ impl Mos6502Isa for Mos6502<'_> {
     }
 
     // Returns a u16 from memory location
-    fn _fetch_u16(&mut self, addr: u16) -> u16 {
+    fn _fetch_u16(&self, addr: u16) -> u16 {
         //TODO: check endianness here
-        (self.bus.get(addr).unwrap() as u16) + (self.bus.get(addr + 1).unwrap() as u16) << 8
+        let lo = self.bus.get(addr).unwrap();
+        let ho = self.bus.get(addr + 1).unwrap();
+        ((ho as u16)<<8) + (lo as u16)
     }
 
     // Decode functions return the value from the opcode param, based on addressing mode.
@@ -1047,7 +1049,8 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn jmp_abs(&mut self) {
         self.cycles = 3;
-        self.pc = self._addr_abs();
+        let addr = self._addr_abs();
+        self.pc = addr;
     }
     /*
         NB:

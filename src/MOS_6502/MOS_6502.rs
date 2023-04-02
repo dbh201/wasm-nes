@@ -9,6 +9,7 @@ pub struct Mos6502<'la> {
     pub(crate) a: u8,
     pub(crate) sp: u8,
     pub(crate) pc: u16,
+    pub(crate) current_instruction: u16,
     pub(crate) ps: u8,
     pub(crate) bus: MMU<'la>,
     pub(crate) isa: Vec<&'la dyn Fn(&mut Self)>,
@@ -22,15 +23,16 @@ impl<'la> Mos6502<'la> {
         let a: u8 = 0;
         let sp: u8 = 0xFF;
         let pc: u16 = 0xFFFC;
+        let current_instruction: u16 = pc;
         let ps: u8 = 0;
         let bus = MMU::new().unwrap();
-        let cycles = 1;
+        let cycles = 0;
         let mut isa = Vec::<&'la dyn Fn(&mut Self)>::new();
         let debug = Mos6502Debug::new();
         for i in 0..256 {
             isa.push(&Mos6502::invalid);
         }
-        let mut ret = Mos6502 { x, y, a, sp, pc, ps, bus, isa, cycles, debug };
+        let mut ret = Mos6502 { x, y, a, sp, pc, ps, bus, isa, cycles, debug, current_instruction };
         ret.load_isa();
         Ok(ret)
     }
@@ -38,9 +40,18 @@ impl<'la> Mos6502<'la> {
         self.bus.get(self.pc).unwrap()
     }
     pub fn step(&mut self) -> Result<(),String> {
+        //finish previous instruction
+        while self.cycles != 0 {
+            self.clock_tick()?;
+        }
+        //start new instruction
+        self.clock_tick()
+    }
+    pub fn clock_tick(&mut self) -> Result<(),String> {
         // If cycles == 0, the means the previous instruction is complete
         if self.cycles == 0 {
             let opcode = self.peek_opcode() as usize;
+            self.current_instruction = self.pc;
             self.pc += 1;
             let func = self.isa[opcode];
             func(self);
@@ -56,16 +67,13 @@ impl<'la> Mos6502<'la> {
 impl fmt::Display for Mos6502<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inst = self.peek_opcode();
-        
-        write!(f, "A: {:X?}\tX: {:X?}\tY: {:X?}\tSP: {:X?}\tPS: {:X?}\nPC: {:X?}\t{} {}\nCycles left: {}",
+        write!(f, "A: {:X?}\tX: {:X?}\tY: {:X?}\tSP: {:X?}\tPS: {:X?}\n{}\nCycles until execution: {}",
             self.a,
             self.x,
             self.y,
             self.sp,
             self.ps,
-            self.pc,
-            self.debug.getMnemonic(inst),
-            self.debug.getAddrMode(inst),
+            self.debug.debugCurrentInstruction(self),
             self.cycles
         )
     }

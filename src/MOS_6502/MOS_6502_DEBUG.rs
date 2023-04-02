@@ -1,5 +1,6 @@
 use std::collections::hash_map::HashMap;
-
+use Mos6502;
+use MOS_6502_ISA::Mos6502Isa;
 
 fn even(v: u8) -> bool {
     v & 0x01 == 0
@@ -11,44 +12,104 @@ fn within(v: u8,l: u8, h: u8) -> bool {
     v >= l && v <= h
 }
 
-/* How do you do this in rust??
+#[derive(Eq, Hash, PartialEq)]
 pub enum AddrMode {
-    ABSOLUTE = "ABS ",
-    ABSOLUTE_X = "ABSX",
-    ABSOLUTE_Y = "ABSY",
-    ACCUMULATOR = "ACC ",
-    ERROR = "ERR ",
-    IMMEDIATE = "IMM ",
-    IMPLIED = "IMPL",
-    INDIRECT = "IND ",
-    INDIRECT_X = "INDX",
-    INDIRECT_Y = "INDY",
-    RELATIVE = "REL ",
-    ZERO_PAGE = "ZP  ",
-    ZERO_PAGE_X = "ZP X",
-    ZERO_PAGE_Y = "ZP Y"
+    ABSOLUTE,
+    ABSOLUTE_X,
+    ABSOLUTE_Y,
+    ACCUMULATOR,
+    ERROR,
+    IMMEDIATE,
+    IMPLIED,
+    INDIRECT,
+    INDIRECT_X,
+    INDIRECT_Y,
+    RELATIVE,
+    ZERO_PAGE,
+    ZERO_PAGE_X,
+    ZERO_PAGE_Y
 }
- */
+
 pub struct Mos6502Debug<'a> {
-    mnemonic: HashMap<u8,&'a str>
+    mnemonic: HashMap<u8,&'a str>,
+    addrMode: HashMap<AddrMode,&'a str>
 }
 impl<'a> Mos6502Debug<'a> {
     pub fn new() -> Mos6502Debug<'a> {
         let mut ret = Mos6502Debug {
-            mnemonic: HashMap::new()
+            mnemonic: HashMap::new(),
+            addrMode: HashMap::new()
         };
+        ret._load_addrModes();
         ret._load_mnemonics();
         ret
     }
     pub fn getMnemonic(&self, op: u8) -> &'a str {
         self.mnemonic[&op]
     }
-    /*
-    pub fn decodeInstruction(&self, bus: &MMU, addr: u16) -> str {
-        //TODO: Implement detailed display here
-        "NYI"
+    
+    pub fn debugCurrentInstruction(&self, cpu: &Mos6502) -> String {
+        let addr = cpu.current_instruction;
+        let op = cpu.bus.get(addr).unwrap();
+        let mode = Mos6502Debug::<'_>::_getAddrMode(op);
+        let mn = self.mnemonic[&op];
+        let param: String;
+        match mode {
+            AddrMode::ABSOLUTE    => param = format!("{:04X?}",cpu._fetch_u16(addr+1)),
+            AddrMode::ABSOLUTE_X  => param = format!("{:04X?} + X:{:02X?}",cpu._fetch_u16(addr+1),cpu.x),
+            AddrMode::ABSOLUTE_Y  => param = format!("{:04X?} + Y:{:02X?}",cpu._fetch_u16(addr+1),cpu.y),
+            AddrMode::ACCUMULATOR => param = format!("A: {:02X?}",cpu.a),
+            AddrMode::ERROR       => param = format!("INVALID OPCODE"),
+            AddrMode::IMMEDIATE   => param = format!("{:02X?}",cpu.bus.get(addr+1).unwrap()),
+            AddrMode::IMPLIED     => param = format!(""),
+            AddrMode::INDIRECT    => {
+                let t = cpu._fetch_u16(addr+1);
+                param = format!("({:04X?}) -> {:04X?}",t,cpu._fetch_u16(t));
+            },
+            AddrMode::INDIRECT_X  => {
+                let t = cpu._fetch_u16(addr+1);
+                param = format!("({:04X?}) + X:{:02X?} -> {:04X?}",t,cpu.x,cpu._fetch_u16(t + (cpu.x as u16)));
+            },
+            AddrMode::INDIRECT_Y  => {
+                let t = cpu._fetch_u16(addr+1);
+                param = format!("({:04X?}) + Y:{:02X?} -> {:04X?}",t,cpu.y,cpu._fetch_u16(t + (cpu.y as u16)));
+            },
+            AddrMode::RELATIVE    => {
+                let offset = cpu.bus.get(addr+1).unwrap() as i8;
+                param = format!("({:04X?}) + {} -> {:04X?}",addr+2,offset,addr+2+(offset as u16));
+            }
+            AddrMode::ZERO_PAGE   => {
+                let t = cpu.bus.get(addr+1).unwrap();
+                param = format!("{:02X?} = {:04X?}", t, t as u16);
+            }
+            AddrMode::ZERO_PAGE_X => {
+                let t = cpu.bus.get(addr+1).unwrap();
+                param = format!("{:02X?} + X:{:02X?} = {:04X?}", t, cpu.x, (t+cpu.x) as u16);
+            }
+            AddrMode::ZERO_PAGE_Y => {
+                let t = cpu.bus.get(addr+1).unwrap();
+                param = format!("{:02X?} + Y:{:02X?} = {:04X?}", t, cpu.y, (t+cpu.y) as u16);
+            }
+        }
+        format!("[{:04X?}]: {} {} ({})",addr,mn,param,self.addrMode[&mode])
     }
-     */
+    
+    fn _load_addrModes(&mut self) {
+        self.addrMode.insert(AddrMode::ABSOLUTE,"ABS ");
+        self.addrMode.insert(AddrMode::ABSOLUTE_X,"ABSX");
+        self.addrMode.insert(AddrMode::ABSOLUTE_Y,"ABSY");
+        self.addrMode.insert(AddrMode::ACCUMULATOR,"ACC ");
+        self.addrMode.insert(AddrMode::ERROR,"ERR ");
+        self.addrMode.insert(AddrMode::IMMEDIATE,"ABS ");
+        self.addrMode.insert(AddrMode::IMPLIED,"ABS ");
+        self.addrMode.insert(AddrMode::INDIRECT,"IND ");
+        self.addrMode.insert(AddrMode::INDIRECT_X,"INDX");
+        self.addrMode.insert(AddrMode::INDIRECT_Y,"INDY");
+        self.addrMode.insert(AddrMode::RELATIVE,"REL ");
+        self.addrMode.insert(AddrMode::ZERO_PAGE,"ZP  ");
+        self.addrMode.insert(AddrMode::ZERO_PAGE_X,"ZPX ");
+        self.addrMode.insert(AddrMode::ZERO_PAGE_Y,"ZPY ");
+    }
     fn _load_mnemonics(&mut self) {
         self.mnemonic.insert(0x10, "BPL ");
         self.mnemonic.insert(0x30, "BMI ");
@@ -152,59 +213,57 @@ impl<'a> Mos6502Debug<'a> {
             self.mnemonic.insert(op, "STY ");
         }
     }
-    pub fn getAddrMode(&self, op: u8) -> &'a str {
-        Mos6502Debug::<'_>::_getAddrMode(op)
+    pub fn getAddrMode(&self, op: u8) -> &str {
+        println!("Looking for opcode: {:02X?}",op);
+        self.addrMode[&Mos6502Debug::<'_>::_getAddrMode(op)]
     }
-    fn _getAddrMode(opcode: u8) -> &'a str {
+    fn _getAddrMode(opcode: u8) ->  AddrMode {
         let ho = opcode >> 4;
         let lo = opcode & 0x0F;
         if lo == 8 || (lo == 0xA && ho >= 0x8 && ho != 0xD && ho != 0xF) ||
             opcode == 0x00 || opcode == 0x40 || opcode == 0x60 {
-            return "IMPL"
+            return AddrMode::IMPLIED
         }
         if odd(ho) {
             if lo == 0x0 {
-                return "REL "
+                return AddrMode::RELATIVE
             }
             if lo == 0x1 {
-                return "INDX"
+                return AddrMode::INDIRECT_X
             }
             if lo == 0x9 || opcode == 0xBE {
-                return "ABSY"
-            }
-            if opcode == 0xBE {
-                return "ABSY"
+                return AddrMode::ABSOLUTE_Y
             }
             if within(lo,0xD,0xE) && opcode != 0x9E {
-                return "ABSX"
+                return AddrMode::ABSOLUTE_X
             }
             if within(lo,0x5,0x6) || opcode == 0x94 || opcode == 0xB4 {
-                return "ZP X"
+                return AddrMode::ZERO_PAGE_X
             }
             if opcode == 0x96 || opcode == 0xB6 {
-                return "ZP Y"
+                return AddrMode::ZERO_PAGE_Y
             }
-            return "ERR "
+            return AddrMode::ERROR
         } else {
             if lo == 0x1 {
-                return "INDY"
+                return AddrMode::INDIRECT_Y
             }
             if lo == 0x9 && ho != 0x8{
-                return "IMM "
+                return AddrMode::IMMEDIATE
             }
             if lo == 0xA && ho & 0x9 == 0 {
-                return "ACC "
+                return AddrMode::ACCUMULATOR
             }
             if opcode == 0x6C {
-                return "IND "
+                return AddrMode::INDIRECT
             }
             if (within(lo,0xC,0xE) && opcode != 0x0C) || opcode == 0x20 {
-                return "ABS "
+                return AddrMode::ABSOLUTE
             }
             if within(lo,0x5,0x6) && opcode != 0x04 && opcode != 0x44 && opcode != 0x64 {
-                return "ZP  "
+                return AddrMode::ZERO_PAGE
             }
-            return "ERR "
+            return AddrMode::ERROR
         }
     }
 }
