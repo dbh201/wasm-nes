@@ -15,7 +15,8 @@ mod LDX;
 mod LDY;
 mod LDA;
 mod STX;
-
+mod STY;
+mod STA;
 use crate::Mos6502::{Mos6502,Mos6502Flag};
 pub use crate::Mos6502Debug::AddrMode::*;
 use crate::Mos6502Debug::AddrMode;
