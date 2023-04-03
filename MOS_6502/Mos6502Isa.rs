@@ -456,7 +456,9 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u8 {
         let addr = self._addr_abs_x(add_cycle_on_page_boundary);
-        self.getmem(addr)
+        let r = self.getmem(addr);
+        //println!("{}",r);
+        r
     }
     fn _addr_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u16 {
         let addr = self._fetch_u16(self.pc);
@@ -464,6 +466,7 @@ impl Mos6502Isa for Mos6502<'_> {
         if add_cycle_on_page_boundary {
             self._check_page_boundary(addr, self.x);
         }
+        //println!("Addr: {:04X} + {:02X} = ",addr,self.x);
         addr + (self.x as u16)
     }
 
@@ -599,7 +602,7 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     fn _adc(&mut self, val: u8) {
         //TODO: ensure edge cases work appropriately here; probably needs optimising too
-        if self.ps & (Mos6502Flag::D as u8) != 0 {
+        if self.enable_bcd && self.ps & (Mos6502Flag::D as u8) != 0 {
             // The absolute maximum value for lo and ho (low digit / high digit) is:
             //      15 + 15 + 1 = 31 or 0x1F
             // The logical maximum value should be 9 + 9 + 1 = 19 or 0x13
@@ -1057,12 +1060,19 @@ impl Mos6502Isa for Mos6502<'_> {
     This is fixed in some later chips like the 65SC02 so for compatibility always ensure
     the indirect vector is not at the end of the page.
     */
+    //TODO: Handle 0xFFFF with some kind of non-panic exception
     fn jmp_ind(&mut self) {
         self.cycles = 5;
-        let addr = self._addr_abs();
-        self.pc = self._fetch_u16(addr);
-        // println!("{} -> {}", addr, self.pc);
-        //TODO: add code to simulate a bug?
+        let l_addr = self._addr_abs();
+        let h_addr: u16;
+        if self.jmp_ind_bug || l_addr == 0xFFFF {
+            h_addr  = (l_addr&0xFF00) + (((l_addr&0x0FFF) + 1) & 0x00FF);
+        } else {
+            h_addr = l_addr + 1;
+        }
+        self.pc = self.getmem(l_addr) as u16 + ((self.getmem(h_addr) as u16)<<8);
+
+        //println!("{:X},{:X} -> {:X}", l_addr, h_addr, self.pc);
     }
 
     fn jsr(&mut self) {

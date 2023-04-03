@@ -16,6 +16,8 @@ pub enum Mos6502Flag {
 }
 //TODO: not public everything here
 pub struct Mos6502<'la> {
+    pub jmp_ind_bug: bool,
+    pub enable_bcd: bool,
     pub x: u8,
     pub y: u8,
     pub a: u8,
@@ -32,6 +34,8 @@ pub struct Mos6502<'la> {
 
 impl<'la> Mos6502<'la> {
     pub fn new() -> Result<Mos6502<'la>,String> {
+        let enable_bcd = false;
+        let jmp_ind_bug = false;
         let x: u8 = 0;
         let y: u8 = 0;
         let a: u8 = 0;
@@ -46,19 +50,19 @@ impl<'la> Mos6502<'la> {
         for _ in 0..256 {
             isa.push(&Mos6502::invalid);
         }
-        let mut ret = Mos6502 { x, y, a, sp, pc, ps, bus, isa, cycles, debug, current_instruction };
+        let mut ret = Mos6502 { x, y, a, sp, pc, ps, bus, isa, cycles, debug, current_instruction, enable_bcd, jmp_ind_bug };
         ret.load_isa();
         Ok(ret)
     }
     // Returns a u16 from memory location
     pub fn _fetch_u16(&self, addr: u16) -> u16 {
-        //TODO: check endianness here
+        //TODO: addr overflows should be handled in some way.
         let lo = self.getmem(addr);
         let ho = self.getmem(addr + 1);
         ((ho as u16)<<8) + (lo as u16)
     }
     pub fn _place_u16(&mut self, addr: u16, val: u16) {
-        // risk of overflow here! How should we handle this?
+        //TODO: addr overflows should be handled in some way.
         self.setmem(addr, (val % 256) as u8);
         self.setmem(addr + 1, (val >> 8) as u8);
     }
@@ -101,8 +105,14 @@ impl<'la> Mos6502<'la> {
             let func = self.isa[opcode];
             func(self);
         }
-        self.cycles -= 1;
-        Ok(())
+        if self.cycles > 0 {
+            self.cycles -= 1;
+            return Ok(())
+        } else {
+            return Err("Cycles were not set by instruction (invalid opcode?)".to_string());
+        }
+        
+        
     }
     pub fn setmem(&mut self, addr: u16, val: u8) {
         self.bus.set(addr,val).expect(format!("Mem write failed @{}={}",addr,val).as_ref())
@@ -130,4 +140,5 @@ impl fmt::Display for Mos6502<'_> {
         )
     }
 }
+
 

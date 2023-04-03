@@ -57,16 +57,31 @@ impl<'a> Mos6502Debug<'a> {
         let mn = self.mnemonic[&op];
         let param: String;
         match mode {
-            AddrMode::ABSOLUTE    => param = format!("{:04X?}",cpu._fetch_u16(addr+1)),
-            AddrMode::ABSOLUTE_X  => param = format!("{:04X?} + X:{:02X?}",cpu._fetch_u16(addr+1),cpu.x),
-            AddrMode::ABSOLUTE_Y  => param = format!("{:04X?} + Y:{:02X?}",cpu._fetch_u16(addr+1),cpu.y),
+            AddrMode::ABSOLUTE    => {
+                let p = cpu._fetch_u16(addr+1) + cpu.x as u16;
+                param = format!("{:04X?} -> {:02X?}",p,cpu.getmem(p));
+            },
+            AddrMode::ABSOLUTE_X  => {
+                let p = cpu._fetch_u16(addr+1);
+                param = format!("{:04X?} + X:{:02X?} -> {:02X?}",p,cpu.x,cpu.getmem(p + cpu.x as u16));
+            },
+            AddrMode::ABSOLUTE_Y  => {
+                let p = cpu._fetch_u16(addr+1);
+                param = format!("{:04X?} + Y:{:02X?} -> {:02X?}",p,cpu.y,cpu.getmem(p + cpu.y as u16));
+            },
             AddrMode::ACCUMULATOR => param = format!("A: {:02X?}",cpu.a),
             AddrMode::ERROR       => param = format!("INVALID OPCODE"),
             AddrMode::IMMEDIATE   => param = format!("{:02X?}",cpu.bus.get(addr+1).unwrap()),
             AddrMode::IMPLIED     => param = format!(""),
             AddrMode::INDIRECT    => {
                 let t = cpu._fetch_u16(addr+1);
-                param = format!("({:04X?}) -> {:04X?}",t,cpu._fetch_u16(t));
+                let i: u16;
+                if cpu.jmp_ind_bug {
+                    i = cpu.getmem(t) as u16 + ((cpu.getmem((t & 0xFF00) + ( ((t&0x0FFF)+1) & 0xFF)) as u16)<<8);
+                } else {
+                    i = cpu._fetch_u16(t);
+                }
+                param = format!("({:04X?}) -> {:04X?}",t,i);
             },
             AddrMode::INDIRECT_X  => {
                 let t = cpu.bus.get(addr+1).unwrap() as u16;
