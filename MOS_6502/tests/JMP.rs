@@ -9,7 +9,6 @@ fn test_JMP_ABS() {
     t(&_cpu,_cpu.pc == 0x8765,format!("{} != {}",_cpu.pc,0x8765).as_ref());
 }
 
-
 #[test]
 fn test_JMP_IND() {
     let mut _cpu = cpu_prep(0x0800,"JMP",INDIRECT);

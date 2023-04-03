@@ -242,11 +242,11 @@ impl<'a> Mos6502Debug<'a> {
                 if Mos6502Debug::<'_>::_get_addr_mode(*key) == mode {
                     return *key
                 }
-                //println!("mode was wrong ({} != {})",self.getAddrMode(*key),self.addrMode[&mode])
+                //println!("{} ({} != {})",mnemonic, self.get_addr_mode(*key), self.addr_mode[&mode])
             }
             
         }
-        println!("could not find opcode {}",mnemonic);
+        //println!("could not find opcode {} {}",mnemonic,self.addr_mode[&mode]);
         return 0xFF
     }
     pub fn get_addr_mode(&self, op: u8) -> &str {
@@ -269,7 +269,7 @@ impl<'a> Mos6502Debug<'a> {
             if lo == 0x9 || opcode == 0xBE {
                 return AddrMode::ABSOLUTE_Y
             }
-            if within(lo,0xD,0xE) && opcode != 0x9E {
+            if (within(lo,0xD,0xE) && opcode != 0x9E) || opcode == 0xBC {
                 return AddrMode::ABSOLUTE_X
             }
             if opcode == 0x96 || opcode == 0xB6 {
@@ -283,8 +283,11 @@ impl<'a> Mos6502Debug<'a> {
             if lo == 0x1 {
                 return AddrMode::INDIRECT_X
             }
-            if lo == 0x9 && ho != 0x8 {
+            if (lo == 0x9 && ho != 0x8) || opcode == 0xA0 || opcode == 0xA2 {
                 return AddrMode::IMMEDIATE
+            }
+            if within(lo,0x4,0x6) && opcode != 0x04 && opcode != 0x44 && opcode != 0x64 {
+                return AddrMode::ZERO_PAGE
             }
             if lo == 0xA && ho & 0x9 == 0 {
                 return AddrMode::ACCUMULATOR
@@ -294,9 +297,6 @@ impl<'a> Mos6502Debug<'a> {
             }
             if (within(lo,0xC,0xE) && opcode != 0x0C) || opcode == 0x20 {
                 return AddrMode::ABSOLUTE
-            }
-            if within(lo,0x5,0x6) && opcode != 0x04 && opcode != 0x44 && opcode != 0x64 {
-                return AddrMode::ZERO_PAGE
             }
             return AddrMode::ERROR
         }

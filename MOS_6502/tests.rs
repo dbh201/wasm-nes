@@ -12,6 +12,8 @@ mod ADC;
 mod AND;
 mod JMP;
 mod LDX;
+mod LDY;
+mod LDA;
 mod STX;
 
 use crate::Mos6502::{Mos6502,Mos6502Flag};
