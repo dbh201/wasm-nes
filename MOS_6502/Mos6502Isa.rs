@@ -3,19 +3,9 @@
 // - calculation should be done
 // - flags should be set
 
-use crate::MOS_6502::Mos6502;
+use crate::Mos6502::{Mos6502,Mos6502Flag};
 
-#[repr(u8)]
-pub enum Mos6502Flag {
-    C = 0x01,
-    Z = 0x02,
-    I = 0x04,
-    D = 0x08,
-    B = 0x10,
-    S = 0x20,
-    V = 0x40,
-    N = 0x80,
-}
+
 pub trait Mos6502Isa {
     fn load_isa(&mut self);
 
@@ -178,27 +168,7 @@ pub trait Mos6502Isa {
     // their respective instructions. The above functions
     // take care of memory management and other details
     // for each instruction opcode.
-    fn _check_page_boundary_rel(&mut self, addr: u16, rel: i8);
-    fn _check_page_boundary(&mut self, addr: u16, off: u8);
-    fn _addr_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
-    fn _decode_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u8;
-    fn _set_z_n(&mut self, val: u8);
-    fn _fetch_u16(&self, addr: u16) -> u16;
-    fn _decode_imm(&mut self) -> u8;
-    fn _decode_zp(&mut self) -> u8;
-    fn _addr_zp(&mut self) -> u16;
-    fn _decode_zp_x(&mut self) -> u8;
-    fn _addr_zp_x(&mut self) -> u16;
-    fn _decode_zp_y(&mut self) -> u8;
-    fn _addr_zp_y(&mut self) -> u16;
-    fn _decode_abs(&mut self) -> u8;
-    fn _addr_abs(&mut self) -> u16;
-    fn _decode_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u8;
-    fn _addr_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u16;
-    fn _decode_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u8;
-    fn _addr_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
-    fn _decode_ind_x(&mut self) -> u8;
-    fn _addr_ind_x(&mut self) -> u16;
+
 
     fn _sty(&mut self, addr: u16);
     fn _stx(&mut self, addr: u16);
@@ -222,8 +192,28 @@ pub trait Mos6502Isa {
     fn _psh(&mut self, val: u8);
     fn _br(&mut self, flag: Mos6502Flag, set: bool);
     fn _adc(&mut self, val: u8);
-
     fn _asl(&mut self, addr: u16);
+
+    fn _check_page_boundary_rel(&mut self, addr: u16, rel: i8);
+    fn _check_page_boundary(&mut self, addr: u16, off: u8);
+    fn _addr_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
+    fn _decode_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u8;
+    fn _set_z_n(&mut self, val: u8);
+    fn _decode_imm(&mut self) -> u8;
+    fn _decode_zp(&mut self) -> u8;
+    fn _addr_zp(&mut self) -> u16;
+    fn _decode_zp_x(&mut self) -> u8;
+    fn _addr_zp_x(&mut self) -> u16;
+    fn _decode_zp_y(&mut self) -> u8;
+    fn _addr_zp_y(&mut self) -> u16;
+    fn _decode_abs(&mut self) -> u8;
+    fn _addr_abs(&mut self) -> u16;
+    fn _decode_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u8;
+    fn _addr_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u16;
+    fn _decode_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u8;
+    fn _addr_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
+    fn _decode_ind_x(&mut self) -> u8;
+    fn _addr_ind_x(&mut self) -> u16;
 }
 impl Mos6502Isa for Mos6502<'_> {
     fn load_isa(&mut self) {
@@ -389,13 +379,7 @@ impl Mos6502Isa for Mos6502<'_> {
             };
     }
 
-    // Returns a u16 from memory location
-    fn _fetch_u16(&self, addr: u16) -> u16 {
-        //TODO: check endianness here
-        let lo = self.bus.get(addr).unwrap();
-        let ho = self.bus.get(addr + 1).unwrap();
-        ((ho as u16)<<8) + (lo as u16)
-    }
+
 
     // Decode functions return the value from the opcode param, based on addressing mode.
     // This can be either the opcode value itself, or the value pointed to by the opcode.
@@ -414,7 +398,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_zp(&mut self) -> u8 {
         let addr = self._addr_zp();
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
     fn _addr_zp(&mut self) -> u16 {
         self.bus
@@ -428,7 +412,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_zp_x(&mut self) -> u8 {
         let addr = self._addr_zp_x();
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
     #[allow(arithmetic_overflow)]
     fn _addr_zp_x(&mut self) -> u16 {
@@ -439,30 +423,30 @@ impl Mos6502Isa for Mos6502<'_> {
                 self.pc += 1;
                 t
             })
-            .unwrap()
-            + self.x) as u16
+            .unwrap() as u16
+            + self.x as u16) % 256
     }
 
     fn _decode_zp_y(&mut self) -> u8 {
         let addr = self._addr_zp_y();
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
     #[allow(arithmetic_overflow)]
     fn _addr_zp_y(&mut self) -> u16 {
-        (self
+        ((self
             .bus
             .get({
                 let t = self.pc;
                 self.pc += 1;
                 t
             })
-            .unwrap()
-            + self.y) as u16
+            .unwrap() as u16)
+            + (self.y as u16)) % 256
     }
 
     fn _decode_abs(&mut self) -> u8 {
         let addr = self._addr_abs();
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
     fn _addr_abs(&mut self) -> u16 {
         let a = self.pc;
@@ -472,7 +456,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u8 {
         let addr = self._addr_abs_x(add_cycle_on_page_boundary);
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
     fn _addr_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u16 {
         let addr = self._fetch_u16(self.pc);
@@ -485,7 +469,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u8 {
         let addr = self._addr_abs_y(add_cycle_on_page_boundary);
-        self.bus.get(addr).unwrap()
+        self.getmem(addr)
     }
 
     fn _addr_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u16 {
@@ -499,27 +483,39 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn _decode_ind_x(&mut self) -> u8 {
         let addr = self._addr_ind_x();
-        self.bus.get(addr).unwrap()
+        let ret = self.getmem(addr);
+        ret
     }
     #[allow(arithmetic_overflow)]
     fn _addr_ind_x(&mut self) -> u16 {
         let t = self.pc;
         self.pc += 1;
-        self._fetch_u16((self.bus.get(t).unwrap() + self.x) as u16)
+        let param = self.getmem(t) as u16;
+
+        // Wrap around for x-indexed zero page? Is this a bug, or is it a feature?
+        let addr = (self.getmem((param + (self.x as u16)) % 256) as u16)
+            + ((self.getmem((param + (self.x as u16) + 1) % 256) as u16)<<8);
+        addr
     }
 
     fn _decode_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u8 {
         let addr = self._addr_ind_y(add_cycle_on_page_boundary);
-        self.bus.get(addr).unwrap()
+        let ret = self.getmem(addr);
+        ret
     }
     fn _addr_ind_y(&mut self, add_cycle_on_page_boundary: bool) -> u16 {
         let t = self.pc;
         self.pc += 1;
+        let param = self.getmem(t) as u16;
 
-        let addr: u16 = self._fetch_u16(self.bus.get(t).unwrap() as u16);
+        // Wrap around for y-indexed zero page? Is this what the 6502 does?
+        // If not, replace with _fetch_u16 @ 
+        let addr = (self.getmem((param) % 256) as u16)
+            + ((self.getmem((param + 1) % 256) as u16)<<8);
         if add_cycle_on_page_boundary {
             self._check_page_boundary(addr, self.y);
         }
+        //println!("addr {} + {} from [{}]", addr, self.y, t);
         addr + (self.y as u16)
     }
     fn _check_page_boundary(&mut self, addr: u16, off: u8) {
@@ -551,31 +547,31 @@ impl Mos6502Isa for Mos6502<'_> {
             .unwrap()
     }
     fn _rol(&mut self, addr: u16) {
-        let mut val: u8 = self.bus.get(addr).unwrap();
+        let mut val: u8 = self.getmem(addr);
         let carry: bool = val & 0x80 != 0;
         val <<= 1;
         val |= self.ps & (Mos6502Flag::C as u8);
         self._sf(Mos6502Flag::C, carry);
         self._set_z_n(val);
-        self.bus.set(addr, val);
+        self.setmem(addr, val);
     }
     fn _ror(&mut self, addr: u16) {
-        let mut val: u8 = self.bus.get(addr).unwrap();
+        let mut val: u8 = self.getmem(addr);
         let carry: bool = val & 0x01 != 0;
         val >>= 1;
         val |= (self.ps & (Mos6502Flag::C as u8)) << 7;
         self._sf(Mos6502Flag::C, carry);
         self._set_z_n(val);
-        self.bus.set(addr, val);
+        self.setmem(addr, val);
     }
     fn _sta(&mut self, addr: u16) {
-        self.bus.set(addr, self.a);
+        self.setmem(addr, self.a);
     }
     fn _stx(&mut self, addr: u16) {
-        self.bus.set(addr, self.x);
+        self.setmem(addr, self.x);
     }
     fn _sty(&mut self, addr: u16) {
-        self.bus.set(addr, self.y);
+        self.setmem(addr, self.y);
     }
     #[allow(arithmetic_overflow)]
     fn _sbc(&mut self, val: u8) {
@@ -595,11 +591,11 @@ impl Mos6502Isa for Mos6502<'_> {
         self._set_z_n(self.a);
     }
     fn _asl(&mut self, addr: u16) {
-        let mut i = self.bus.get(addr).unwrap();
+        let mut i = self.getmem(addr);
         self.ps = (self.ps & !(Mos6502Flag::C as u8)) | (i & (Mos6502Flag::C as u8));
         i <<= 1;
         self._set_z_n(i);
-        self.bus.set(addr, i);
+        self.setmem(addr, i);
     }
     fn _adc(&mut self, val: u8) {
         //TODO: ensure edge cases work appropriately here; probably needs optimising too
@@ -621,9 +617,10 @@ impl Mos6502Isa for Mos6502<'_> {
             }
             self.a = ho << 4 + lo;
         } else {
-            let res: u16 = (self.a + val).into();
-            self.ps |= if res >= 256 { Mos6502Flag::C as u8 } else { 0 };
-            self.a += val;
+            let res: u16 = (self.a as u16) + (val as u16) + ((self.ps & (Mos6502Flag::C as u8)) as u16);
+            //println!("a{} c{} i{} = {}",self.a,self.ps & 0x01,val,res);
+            self.ps = (self.ps & !(Mos6502Flag::C as u8)) | if res >= 256 { Mos6502Flag::C as u8 } else { 0 };
+            self.a = (res % 256) as u8;
         }
         self._set_z_n(self.a);
     }
@@ -638,7 +635,7 @@ impl Mos6502Isa for Mos6502<'_> {
         }
     }
     fn _psh(&mut self, val: u8) {
-        self.bus.set(0x100 + (self.sp as u16), val);
+        self.setmem(0x100 + (self.sp as u16), val);
         self.sp -= 1;
     }
     fn _sf(&mut self, flag: Mos6502Flag, set: bool) {
@@ -658,18 +655,18 @@ impl Mos6502Isa for Mos6502<'_> {
         self._set_z_n(self.y - val);
     }
     fn _dec(&mut self, addr: u16) {
-        let val = self.bus.get(addr).unwrap() - 1;
+        let val = self.getmem(addr) - 1;
         self._set_z_n(val);
-        self.bus.set(addr, val);
+        self.setmem(addr, val);
     }
     fn _eor(&mut self, val: u8) {
         self.a ^= val;
         self._set_z_n(self.a);
     }
     fn _inc(&mut self, addr: u16) {
-        let val = self.bus.get(addr).unwrap() + 1;
+        let val = self.getmem(addr) + 1;
         self._set_z_n(val);
-        self.bus.set(addr, val);
+        self.setmem(addr, val);
     }
     fn _lda(&mut self, val: u8) {
         self.a = val;
@@ -677,18 +674,18 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     fn _ldx(&mut self, val: u8) {
         self.x = val;
-        self._set_z_n(self.a);
+        self._set_z_n(self.x);
     }
     fn _ldy(&mut self, val: u8) {
         self.y = val;
-        self._set_z_n(self.a);
+        self._set_z_n(self.y);
     }
     fn _lsr(&mut self, addr: u16) {
-        let mut val = self.bus.get(addr).unwrap();
+        let mut val = self.getmem(addr);
         self._sf(Mos6502Flag::C, val & 0x01 != 0);
         val >>= 1;
         self._set_z_n(self.a);
-        self.bus.set(addr, val);
+        self.setmem(addr, val);
     }
     fn _ora(&mut self, val: u8) {
         self.a |= val;
@@ -1064,6 +1061,7 @@ impl Mos6502Isa for Mos6502<'_> {
         self.cycles = 5;
         let addr = self._addr_abs();
         self.pc = self._fetch_u16(addr);
+        // println!("{} -> {}", addr, self.pc);
         //TODO: add code to simulate a bug?
     }
 
@@ -1124,53 +1122,53 @@ impl Mos6502Isa for Mos6502<'_> {
     fn ldx_imm(&mut self) {
         self.cycles = 2;
         let val = self._decode_imm();
-		self._lda(val);
+		self._ldx(val);
     }
     fn ldx_zp(&mut self) {
         self.cycles = 3;
         let val = self._decode_zp();
-		self._lda(val);
+		self._ldx(val);
     }
     fn ldx_zp_y(&mut self) {
         self.cycles = 4;
         let val = self._decode_zp_y();
-		self._lda(val);
+		self._ldx(val);
     }
     fn ldx_abs(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs();
-		self._lda(val);
+		self._ldx(val);
     }
     fn ldx_abs_y(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs_y(true);
-		self._lda(val);
+		self._ldx(val);
     }
 
     fn ldy_imm(&mut self) {
         self.cycles = 2;
         let val = self._decode_imm();
-		self._lda(val);
+		self._ldy(val);
     }
     fn ldy_zp(&mut self) {
         self.cycles = 3;
         let val = self._decode_zp();
-		self._lda(val);
+		self._ldy(val);
     }
     fn ldy_zp_x(&mut self) {
         self.cycles = 4;
         let val = self._decode_zp_x();
-		self._lda(val);
+		self._ldy(val);
     }
     fn ldy_abs(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs();
-		self._lda(val);
+		self._ldy(val);
     }
     fn ldy_abs_x(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs_x(true);
-		self._lda(val);
+		self._ldy(val);
     }
 
     fn lsr_acc(&mut self) {

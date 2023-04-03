@@ -1,19 +1,19 @@
-pub struct MMIO_node<'a> {
+pub struct MmioNode<'a> {
     pub(crate) name: String,
     addr: u16,
     len: u16,
     get_func: Option<&'a dyn Fn(u16) -> Result<u8, String>>,
     set_func: Option<&'a dyn Fn(u16, u8) -> Result<(), String>>,
 }
-impl<'a> MMIO_node<'a> {
+impl<'a> MmioNode<'a> {
     pub fn new(
         name: String,
         addr: u16,
         len: u16,
         get_func: Option<&'a dyn Fn(u16) -> Result<u8, String>>,
         set_func: Option<&'a dyn Fn(u16, u8) -> Result<(), String>>,
-    ) -> MMIO_node<'a> {
-        let res = MMIO_node { 
+    ) -> MmioNode<'a> {
+        let res = MmioNode { 
             name, 
             addr, 
             len, 
