@@ -686,7 +686,7 @@ impl Mos6502Isa for Mos6502<'_> {
         let mut val = self.getmem(addr);
         self._sf(Mos6502Flag::C, val & 0x01 != 0);
         val >>= 1;
-        self._set_z_n(self.a);
+        self._set_z_n(val);
         self.setmem(addr, val);
     }
     fn _ora(&mut self, val: u8) {
@@ -1266,6 +1266,7 @@ impl Mos6502Isa for Mos6502<'_> {
     }
 
     fn rol_acc(&mut self) {
+        self.cycles = 2;
         let carry: bool = self.a & 0x80 != 0;
         self.a <<= 1;
         self.a |= self.ps & (Mos6502Flag::C as u8);
@@ -1304,9 +1305,10 @@ impl Mos6502Isa for Mos6502<'_> {
     }
 
     fn ror_acc(&mut self) {
-        let carry: bool = self.a & 0x80 != 0;
-        self.a <<= 1;
-        self.a |= self.ps & (Mos6502Flag::C as u8);
+        self.cycles = 2;
+        let carry: bool = self.a & 0x01 != 0;
+        self.a >>= 1;
+        self.a |= (self.ps & (Mos6502Flag::C as u8))<<7;
         self._sf(Mos6502Flag::C, carry);
         self._set_z_n(self.a);
     }

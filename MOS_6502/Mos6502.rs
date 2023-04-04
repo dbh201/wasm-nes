@@ -110,7 +110,7 @@ impl<'la> Mos6502<'la> {
             self.cycles -= 1;
             return Ok(())
         } else {
-            return Err("Cycles were not set by instruction (invalid opcode?)".to_string());
+            return Err(format!("Cycles were not set by instruction:\n{}",self).replace("\\n", "\n"));
         }
         
         
