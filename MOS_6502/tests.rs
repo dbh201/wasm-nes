@@ -24,6 +24,7 @@ mod FlagInstructions;
 mod StackInstructions;
 mod TransferInstructions;
 mod IncDecInstructions;
+mod SystemInstructions;
 
 use crate::Mos6502::{Mos6502,Mos6502Flag};
 pub use crate::Mos6502Debug::AddrMode::*;

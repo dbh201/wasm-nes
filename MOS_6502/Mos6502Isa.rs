@@ -539,9 +539,8 @@ impl Mos6502Isa for Mos6502<'_> {
     // These functions are meant to be called by instruction functions
     // to perform common calculations.
     fn _pop(&mut self) -> u8 {
-        let t = self.sp;
-        self.sp -= 1;
-        self.getmem(0x100 + t as u16)
+        self.sp += 1;
+        self.getmem(0x100 + self.sp as u16)
     }
     fn _rol(&mut self, addr: u16) {
         let mut val: u8 = self.getmem(addr);
@@ -640,10 +639,8 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     fn _sf(&mut self, flag: Mos6502Flag, set: bool) {
         let f: u8 = flag as u8;
-        //let old_ps = self.ps;
         self.ps &= !f;
         if set { self.ps |= f };
-        //println!("{} -> {} ({})",old_ps,self.ps,f);
     }
     fn _cmp(&mut self, val: u8) {
         self._sf(Mos6502Flag::C, self.a > val);
@@ -850,7 +847,7 @@ impl Mos6502Isa for Mos6502<'_> {
         self._psh((self.pc >> 8) as u8);
         self._psh((self.pc % 256) as u8);
         self._psh(self.ps);
-        self.pc = 0xFFFE;
+        self.pc = self._fetch_u16(0xFFFE);
         self._sf(Mos6502Flag::B, true);
     }
 
@@ -1087,8 +1084,8 @@ impl Mos6502Isa for Mos6502<'_> {
 
         let sr = self._addr_abs();
         let ret: u16 = self.pc - 1;
-        self._psh((ret % 256) as u8);
         self._psh((ret >> 8) as u8);
+        self._psh((ret % 256) as u8);
         self.pc = sr;
     }
 
@@ -1334,11 +1331,13 @@ impl Mos6502Isa for Mos6502<'_> {
         let addr = self._addr_zp_x();
 		self._ror(addr);
     }
-
+    // This needs to be incremented too?
+    // http://6502.org/tutorials/6502opcodes.html#BRK :
+    // "... an RTI will go to the address of the BRK +2 ..."
     fn rti(&mut self) {
         self.cycles = 6;
         self.ps = self._pop();
-        self.pc = (self._pop() as u16) + (self._pop() as u16) << 8;
+        self.pc = 1 + (self._pop() as u16) + ((self._pop() as u16) << 8);
     }
 
     // JSR pushes "return address - 1", so we increment on
@@ -1346,7 +1345,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn rts(&mut self) {
         self.cycles = 6;
-        self.pc = 1 + ((self._pop() as u16) << 8) + (self._pop() as u16);
+        self.pc = 1 + (self._pop() as u16) + ((self._pop() as u16) << 8);
     }
 
     fn sbc_imm(&mut self) {

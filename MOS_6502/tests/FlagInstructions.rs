@@ -2,14 +2,25 @@
 use crate::tests::*;
 
 fn test_flag(_cpu: &mut Mos6502, f: Mos6502Flag, set: bool) {
-    _cpu.ps |= Mos6502Flag::C as u8;
-    let orig = _cpu.ps;
+    let u8f = f as u8;
+    _cpu.ps = 0;
+    let mut expected: u8;
+    if set {
+        expected = u8f;
+    } else {
+        expected = 0
+    }
     _cpu.step();
-    t(&_cpu,_cpu.flag(f) == set,format!("{:08b} -> {:08b} (not {:08b})",orig,_cpu.ps,f as u8).as_ref());
+    t(&_cpu,_cpu.ps == expected,format!("{:08b} -> {:08b} (not {:08b})",0,_cpu.ps,f as u8).as_ref());
     _cpu.reset();
-    let orig = _cpu.ps;
+    _cpu.ps = 0xFF;
+    if set {
+        expected = 0xFF;
+    } else {
+        expected = !u8f;
+    }    
     _cpu.step();
-    t(&_cpu,_cpu.flag(f) == set,format!("{:08b} -> {:08b} (not {:08b})",orig,_cpu.ps,f as u8).as_ref());
+    t(&_cpu, _cpu.ps == expected, format!("{:08b} -> {:08b} (not {:08b})",0xFF,_cpu.ps,f as u8).as_ref());
 }
 #[test]
 fn test_CLC() {
