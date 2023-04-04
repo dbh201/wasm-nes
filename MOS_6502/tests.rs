@@ -12,6 +12,7 @@ mod ADC;
 mod AND;
 mod ASL;
 mod BXX;
+mod BIT;
 mod JMP;
 mod LDX;
 mod LDY;
