@@ -32,4 +32,7 @@ impl MmioObject for RamBank {
             Ok(())
         }
     }
+    fn len(&self) -> usize {
+        self.data.len()
+    }
 }
