@@ -571,18 +571,23 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     #[allow(arithmetic_overflow)]
     fn _sbc(&mut self, val: u8) {
+        let carry = self.ps & (Mos6502Flag::C as u8);
         //TODO: calculating twice is almost certainly unnecessary
         let t: i16 =
-            (self.a as i16) - (val as i16) - ((1 - (self.ps & (Mos6502Flag::C as u8))) as i16);
-        let v: u8 = self.a - val - !(self.ps & (Mos6502Flag::C as u8));
-
+            (self.a as i16) - (val as i16) - ((1 - carry) as i16);
+        let v = ((t as u16) % 256) as u8;
+        
+        let new_carry = t >= 0;
         // --WARNING: possible bug here--
         // using an existing emulator, you can see the following:
         // [V] is set when overflowing, unset otherwise.
-        // [C] is *unset* only when the accumulator changes sign.
-        // I think those are the only rules governing the flags...
-        self._sf(Mos6502Flag::C, self.a & 0x80 == v & 0x80);
+        // "set if sign bit is incorrect" (from 6502.org)
         self._sf(Mos6502Flag::V, t < -128 || t > 127);
+
+        // [C] is *unset* only when the accumulator changes sign
+        // to negative. "clear if overflow in bit 7" (from 6502.org)
+        self._sf(Mos6502Flag::C, new_carry);
+
         self.a = v;
         self._set_z_n(self.a);
     }

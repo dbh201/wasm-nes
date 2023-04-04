@@ -1,8 +1,8 @@
 use crate::tests::*;
 
-//TODO: test BCD addition
-fn ADC_assert(_cpu: &Mos6502, a: u8, imm: u8, carry: u8) {
-    let val = (a as u16) + (imm as u16) + (carry as u16);
+//TODO: not confident on these assertions, or SBC as a whole
+fn SBC_assert(_cpu: &Mos6502, a: u8, imm: u8, carry: u8) {
+    let val = (a as i16) - (imm as i16) - (1 - (carry as i16));
     t(
         _cpu,
         _cpu.a == (val % 256) as u8,
@@ -10,14 +10,33 @@ fn ADC_assert(_cpu: &Mos6502, a: u8, imm: u8, carry: u8) {
             "expected a{} c{} i{}={}, got {}",
             a, carry, imm, val, _cpu.a
         )
-        .as_str(),
+        .as_ref(),
+    );
+    let carry_clear = val < 0;
+    t(
+        _cpu,
+        carry_clear != _cpu.flag(Mos6502Flag::C),
+        format!(
+            "expected a{} c{} i{}={}, carry set {}, should be {}",
+            a, carry, imm, (val as u16)%256, _cpu.flag(Mos6502Flag::C),!carry_clear
+        )
+        .as_ref()
+    );
+    let signed_overflow = val < -128 || val > 127;
+    t(
+        _cpu,
+        signed_overflow == _cpu.flag(Mos6502Flag::V),
+        format!(
+            "expected a{} c{} i{}={}({}) overflow set {}, should be {}",
+            a, carry, imm, val,(val as u16)%256, _cpu.flag(Mos6502Flag::C),!carry_clear
+        )
+        .as_ref()
     );
     nzf(_cpu, _cpu.a);
-    cf(_cpu, val);
 }
 #[test]
-fn test_ADC_IMM() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", IMMEDIATE);
+fn test_SBC_IMM() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", IMMEDIATE);
     for a in 0..=255 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -27,14 +46,14 @@ fn test_ADC_IMM() {
                 _cpu.ps = carry;
                 _cpu.setmem(0x0801, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 #[test]
-fn test_ADC_ZP() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", IMMEDIATE);
+fn test_SBC_ZP() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", IMMEDIATE);
     for a in 0..=255 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -45,14 +64,14 @@ fn test_ADC_ZP() {
                 _cpu.setmem(0x0801, imm);
                 _cpu.setmem(imm as u16, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 #[test]
-fn test_ADC_ZP_X() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", ZERO_PAGE_X);
+fn test_SBC_ZP_X() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", ZERO_PAGE_X);
     for a in 0..=255 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -64,14 +83,14 @@ fn test_ADC_ZP_X() {
                 _cpu.setmem(0x0801, imm);
                 _cpu.setmem(((imm as u16) + (a as u16)) % 256, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 #[test]
-fn test_ADC_ABS() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE);
+fn test_SBC_ABS() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE);
     let op = _cpu.getmem(0x0800);
     for a in 0..=255 {
         for imm in 0..=255 {
@@ -92,15 +111,15 @@ fn test_ADC_ABS() {
                 _cpu.setmem(load + 2, a);
                 _cpu.setmem(abs, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 
 #[test]
-fn test_ADC_ABS_X() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE_X);
+fn test_SBC_ABS_X() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE_X);
     let op = _cpu.getmem(0x0800);
     for a in 0..=254 {
         for imm in 0..=255 {
@@ -122,15 +141,15 @@ fn test_ADC_ABS_X() {
                 _cpu.setmem(load + 2, a);
                 _cpu.setmem(abs, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 
 #[test]
-fn test_ADC_ABS_Y() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE_Y);
+fn test_SBC_ABS_Y() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE_Y);
     let op = _cpu.getmem(0x0800);
     for a in 0..=254 {
         for imm in 0..=255 {
@@ -152,15 +171,15 @@ fn test_ADC_ABS_Y() {
                 _cpu.setmem(load + 2, a);
                 _cpu.setmem(abs, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 
 #[test]
-fn test_ADC_IND_X() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", INDIRECT_X);
+fn test_SBC_IND_X() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", INDIRECT_X);
     let op = _cpu.getmem(0x0800);
     for a in 0..=252 {
         for imm in 0..=255 {
@@ -185,15 +204,15 @@ fn test_ADC_IND_X() {
                 _cpu.setmem(((imm as u16) + (a as u16) + 1) % 256, (abs >> 8) as u8);
                 _cpu.setmem(abs, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }
 }
 
 #[test]
-fn test_ADC_IND_Y() {
-    let mut _cpu = cpu_prep(0x0800, "ADC", INDIRECT_Y);
+fn test_SBC_IND_Y() {
+    let mut _cpu = cpu_prep(0x0800, "SBC", INDIRECT_Y);
     let op = _cpu.getmem(0x0800);
     for a in 0..=252 {
         for imm in 0..=255 {
@@ -218,7 +237,7 @@ fn test_ADC_IND_Y() {
                 _cpu.setmem((imm as u16 + 1) % 256, (abs >> 8) as u8);
                 _cpu.setmem(abs + a as u16, imm);
                 _cpu.step();
-                ADC_assert(&_cpu, a, imm, carry);
+                SBC_assert(&_cpu, a, imm, carry);
             }
         }
     }

@@ -20,6 +20,7 @@ mod LSR;
 mod ORA;
 mod ROL;
 mod ROR;
+mod SBC;
 mod STX;
 mod STY;
 mod STA;
