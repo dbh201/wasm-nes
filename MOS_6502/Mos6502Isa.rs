@@ -658,7 +658,8 @@ impl Mos6502Isa for Mos6502<'_> {
         self._set_z_n(self.y - val);
     }
     fn _dec(&mut self, addr: u16) {
-        let val = self.getmem(addr) - 1;
+        let val = self.getmem(addr) as u16 + 255;
+        let val = (val % 256) as u8;
         self._set_z_n(val);
         self.setmem(addr, val);
     }
@@ -667,7 +668,8 @@ impl Mos6502Isa for Mos6502<'_> {
         self._set_z_n(self.a);
     }
     fn _inc(&mut self, addr: u16) {
-        let val = self.getmem(addr) + 1;
+        let val = self.getmem(addr) as u16 + 1;
+        let val = (val % 256) as u8;
         self._set_z_n(val);
         self.setmem(addr, val);
     }
@@ -965,12 +967,12 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn dex(&mut self) {
         self.cycles = 2;
-        self.x -= 1;
+        self.x = ((self.x as u16 + 255) % 256) as u8;
         self._set_z_n(self.x);
     }
     fn dey(&mut self) {
         self.cycles = 2;
-        self.y -= 1;
+        self.y = ((self.y as u16 + 255) % 256) as u8;
         self._set_z_n(self.y);
     }
 
@@ -1038,12 +1040,12 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn inx(&mut self) {
         self.cycles = 2;
-        self.x += 1;
+        self.x = ((self.x as u16 + 1) % 256) as u8;
         self._set_z_n(self.x);
     }
     fn iny(&mut self) {
         self.cycles = 2;
-        self.y += 1;
+        self.y = ((self.y as u16 + 1) % 256) as u8;
         self._set_z_n(self.y);
     }
 
