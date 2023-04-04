@@ -10,6 +10,8 @@
 // Test modules
 mod ADC;
 mod AND;
+mod ASL;
+mod BXX;
 mod JMP;
 mod LDX;
 mod LDY;
@@ -55,6 +57,6 @@ pub fn cf(_cpu: &Mos6502, val: u16) {
     t(
         _cpu,
         _cpu.flag(Mos6502Flag::C) == (val > 255),
-        "[C flag error]"
+        format!("[C flag error] C:{}, {:X} > 0xFF:{}",_cpu.flag(Mos6502Flag::C),val,(val > 255)).as_ref()
     );
 }

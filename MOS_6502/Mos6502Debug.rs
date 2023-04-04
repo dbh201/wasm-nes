@@ -95,7 +95,8 @@ impl<'a> Mos6502Debug<'a> {
             },
             AddrMode::RELATIVE    => {
                 let offset = cpu.bus.get(addr+1).unwrap() as i8;
-                param = format!("({:04X?}) + {} -> {:04X?}",addr+2,offset,addr+2+(offset as u16));
+                let res: i16 = ((addr + 2) as i16) + offset as i16;
+                param = format!("({:04X?}) + {} -> {:04X?}",addr+2,offset, res as u16);
             }
             AddrMode::ZERO_PAGE   => {
                 let t = cpu.bus.get(addr+1).unwrap();
@@ -238,13 +239,12 @@ impl<'a> Mos6502Debug<'a> {
     pub fn get_opcode(&self, mnemonic: &str, mode: AddrMode) -> u8 {
         for (key,value) in &self.mnemonic {
             if value.eq(&mnemonic) {
-                //println!("{} == {}",value,mnemonic);
                 if Mos6502Debug::<'_>::_get_addr_mode(*key) == mode {
+                    //println!("OK: {} {:X}({} == {})",mnemonic,*key, self.get_addr_mode(*key), self.addr_mode[&mode]);
                     return *key
                 }
-                //println!("{} ({} != {})",mnemonic, self.get_addr_mode(*key), self.addr_mode[&mode])
+                //println!("{} {:X}({} != {})",mnemonic,*key, self.get_addr_mode(*key), self.addr_mode[&mode])
             }
-            
         }
         //println!("could not find opcode {} {}",mnemonic,self.addr_mode[&mode]);
         return 0xFF

@@ -595,7 +595,7 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     fn _asl(&mut self, addr: u16) {
         let mut i = self.getmem(addr);
-        self.ps = (self.ps & !(Mos6502Flag::C as u8)) | (i & (Mos6502Flag::C as u8));
+        self.ps = (self.ps & !(Mos6502Flag::C as u8)) | (i & 0x80 > 0) as u8;
         i <<= 1;
         self._set_z_n(i);
         self.setmem(addr, i);
@@ -632,8 +632,11 @@ impl Mos6502Isa for Mos6502<'_> {
             self.cycles = 3;
             let rel: i8 = self._decode_imm() as i8;
             self._check_page_boundary_rel(self.pc, rel);
-            self.pc += rel as u16;
+            let res: i16 = (self.pc as i16) + (rel as i16);
+            //println!("pc: {} rel: {} = {}",self.pc, rel, res);
+            self.pc = res as u16;
         } else {
+            self.pc += 1;
             self.cycles = 2;
         }
     }

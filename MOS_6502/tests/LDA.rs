@@ -1,5 +1,4 @@
 use crate::tests::*;
-
 #[test]
 fn test_LDA_IMM() {
     let mut _cpu = cpu_prep(0, "LDA", IMMEDIATE);
