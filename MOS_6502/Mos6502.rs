@@ -1,3 +1,4 @@
+use crate::MmioNode::MmioNode;
 use crate::Mos6502Isa::Mos6502Isa;
 use crate::Mos6502Debug::Mos6502Debug;
 use crate::MMU::MMU;
@@ -26,7 +27,7 @@ pub struct Mos6502<'la> {
     pub pc: u16,
     pub current_instruction: u16,
     pub ps: u8,
-    pub bus: MMU<'la>,
+    pub bus: MMU,
     pub isa: Vec<&'la dyn Fn(&mut Self)>,
     pub cycles: u8,
     pub debug: Mos6502Debug<'la>
@@ -44,7 +45,10 @@ impl<'la> Mos6502<'la> {
         let pc: u16 = 0xFFFC;
         let current_instruction: u16 = pc;
         let ps: u8 = 0;
-        let bus = MMU::new().unwrap();
+        let mut bus = MMU::new().unwrap();
+        let mut ram = MmioNode::new("64KB RAM".to_string(), 0, 0xFFFF);
+        ram.make_ram().expect("Couldn't initialize RAM MmioNode:");
+        bus.register_MmioNode(ram).expect("Couldn't register RAM MmioNode:");
         let cycles = 0;
         let mut isa = Vec::<&'la dyn Fn(&mut Self)>::new();
         let debug = Mos6502Debug::new();

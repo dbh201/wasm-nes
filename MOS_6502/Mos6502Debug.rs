@@ -283,7 +283,7 @@ impl<'a> Mos6502Debug<'a> {
             if lo == 0x1 {
                 return AddrMode::INDIRECT_X
             }
-            if (lo == 0x9 && ho != 0x8) || opcode == 0xA0 || opcode == 0xA2 {
+            if (lo == 0x9 && ho != 0x8) || opcode == 0xA0 || opcode == 0xC0 || opcode == 0xE0 || opcode == 0xA2 {
                 return AddrMode::IMMEDIATE
             }
             if within(lo,0x4,0x6) && opcode != 0x04 && opcode != 0x44 && opcode != 0x64 {

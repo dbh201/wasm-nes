@@ -1,72 +1,60 @@
-pub struct MmioNode<'a> {
-    pub(crate) name: String,
-    addr: u16,
-    len: u16,
-    get_func: Option<&'a dyn Fn(u16) -> Result<u8, String>>,
-    set_func: Option<&'a dyn Fn(u16, u8) -> Result<(), String>>,
+use crate::RamBank::RamBank;
+#[derive(PartialEq)]
+enum MmioType {
+    UNSET,
+    RAM,
 }
-impl<'a> MmioNode<'a> {
+pub trait MmioObject {
+    fn get(&self, addr: u16) -> Result<u8,String>;
+    fn set(&mut self, addr: u16, val: u8) -> Result<(),String>;
+}
+pub struct MmioNode {
+    pub(crate) name: String,
+    pub(crate) addr: u16,
+    pub(crate) len: u16,
+    ram: Option<RamBank>,
+    obj_type: MmioType,
+
+}
+impl MmioNode {
     pub fn new(
         name: String,
         addr: u16,
-        len: u16,
-        get_func: Option<&'a dyn Fn(u16) -> Result<u8, String>>,
-        set_func: Option<&'a dyn Fn(u16, u8) -> Result<(), String>>,
-    ) -> MmioNode<'a> {
+        len: u16
+    ) -> MmioNode {
         let res = MmioNode { 
             name, 
             addr, 
-            len, 
-            get_func,
-            set_func
+            len,
+            ram: None,
+            obj_type: MmioType::UNSET
         };
         res
     }
-
-    pub fn use_set_func(
-        &mut self,
-        new_func: Option<&'a dyn Fn(u16, u8) -> Result<(), String>>,
-    ) -> Result<(), String> {
-        self.set_func = new_func;
-        Ok(())
+    pub fn make_ram(&mut self) -> Result<(),String> {
+        if self.obj_type == MmioType::UNSET {
+            self.ram = Some(RamBank::new(self.len));
+            self.obj_type = MmioType::RAM;
+            Ok(())
+        } else {
+            Err(format!("MmioNode: {} cannot be made ram because it already has a type", self.name))
+        }
     }
-
-    pub fn use_get_func(&mut self, new_func: Option<&'a dyn Fn(u16) -> Result<u8, String>>) -> Result<(), String> {
-        self.get_func = new_func;
-        Ok(())
-    }
-
     pub fn owns_addr(&self, addr: u16) -> bool {
-        addr >= self.addr && addr < self.addr + self.len
+        addr >= self.addr && addr <= self.addr + self.len
     }
 
     pub fn get(&self, addr: u16) -> Result<u8, String> {
-        if self.get_func.is_some() {
-            (self.get_func.unwrap())(addr - self.addr)
-        } else {
-            Err(format!(
-                "no getter for MMIO node {}, which owns {}-{} (requested {})",
-                self.name,
-                self.addr,
-                self.addr + self.len,
-                addr
-            ))
+        match self.obj_type {
+            MmioType::UNSET => Err(format!("MmioNode: {} backing store uninitialized; owns {}-{} [get {}]",self.name,self.addr,self.len,addr)),
+            MmioType::RAM => return self.ram.as_ref().unwrap().get(addr)
         }
-        
     }
 
-    pub fn set(&self, addr: u16, val: u8) -> Result<(), String> {
-        if self.set_func.is_some() {
-            (self.set_func.unwrap())(addr - self.addr, val)
-        } else {
-            Err(format!(
-                "no setter for MMIO node {}, which owns {}-{} (tried {} = {})",
-                self.name,
-                self.addr,
-                self.addr + self.len,
-                addr,
-                val
-            ))
+    pub fn set(&mut self, addr: u16, val: u8) -> Result<(), String> {
+        match self.obj_type {
+            MmioType::UNSET => Err(format!("MmioNode: {} backing store uninitialized; owns {}-{} [get {}]",self.name,self.addr,self.len,addr)),
+            MmioType::RAM => return self.ram.as_mut().unwrap().set(addr, val)
         }
     }
 }

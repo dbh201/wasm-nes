@@ -25,6 +25,7 @@ mod STX;
 mod STY;
 mod STA;
 mod BranchInstructions;
+mod CompareInstructions;
 mod FlagInstructions;
 mod IncDecInstructions;
 mod JumpInstructions;

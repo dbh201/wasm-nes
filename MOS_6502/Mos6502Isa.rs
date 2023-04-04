@@ -187,7 +187,7 @@ pub trait Mos6502Isa {
     fn _dec(&mut self, addr: u16);
     fn _cpy(&mut self, val: u8);
     fn _cpx(&mut self, val: u8);
-    fn _cmp(&mut self, val: u8);
+    fn _cmp(&mut self, a:u8, val: u8);
     fn _sf(&mut self, flag: Mos6502Flag, set: bool);
     fn _psh(&mut self, val: u8);
     fn _br(&mut self, flag: Mos6502Flag, set: bool);
@@ -647,17 +647,18 @@ impl Mos6502Isa for Mos6502<'_> {
         self.ps &= !f;
         if set { self.ps |= f };
     }
-    fn _cmp(&mut self, val: u8) {
-        self._sf(Mos6502Flag::C, self.a > val);
-        self._set_z_n(self.a - val);
+    fn _cmp(&mut self, a: u8, val: u8) {
+        let res: i16 = a as i16 - val as i16;
+        let res: u8 = ((res as u16) % 256) as u8;
+        self._sf(Mos6502Flag::C, a >= val);
+        self._sf(Mos6502Flag::Z, a == val);
+        self._sf(Mos6502Flag::N, res & 0x80 > 0);
     }
     fn _cpx(&mut self, val: u8) {
-        self._sf(Mos6502Flag::C, self.x > val);
-        self._set_z_n(self.x - val);
+        self._cmp(self.x,val);
     }
     fn _cpy(&mut self, val: u8) {
-        self._sf(Mos6502Flag::C, self.y > val);
-        self._set_z_n(self.y - val);
+        self._cmp(self.y,val);
     }
     fn _dec(&mut self, addr: u16) {
         let val = self.getmem(addr) as u16 + 255;
@@ -876,42 +877,42 @@ impl Mos6502Isa for Mos6502<'_> {
     fn cmp_imm(&mut self) {
         self.cycles = 2;
         let val = self._decode_imm();
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_zp(&mut self) {
         self.cycles = 3;
         let val = self._decode_zp();
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_zp_x(&mut self) {
         self.cycles = 4;
         let val = self._decode_zp_x();
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_abs(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs();
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_abs_x(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs_x(true);
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_abs_y(&mut self) {
         self.cycles = 4;
         let val = self._decode_abs_y(true);
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_ind_x(&mut self) {
         self.cycles = 6;
         let val = self._decode_ind_x();
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
     fn cmp_ind_y(&mut self) {
         self.cycles = 5;
         let val = self._decode_ind_y(true);
-		self._cmp(val);
+		self._cmp(self.a,val);
     }
 
     fn cpx_imm(&mut self) {

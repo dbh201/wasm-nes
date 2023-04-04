@@ -1,20 +1,24 @@
 use crate::MmioNode::MmioNode;
-pub struct MMU<'a> {
-    mmio_table: Vec<MmioNode<'a>>,
-    mem: [u8;64*1024],
+pub struct MMU {
+    mmio_table: Vec<MmioNode>,
 }
-impl<'a> MMU<'a> {
-    pub fn new() -> Result<MMU<'a>,String> {
-        let mem: [u8;64*1024] = [0;64*1024];
+impl MMU {
+    pub fn new() -> Result<MMU,String> {
         let mmio_table = Vec::new();
-        Ok(MMU { mem, mmio_table })
+        Ok(MMU { mmio_table })
     }
-    #[allow(non_snake_case)]
-    pub fn register_MmioNode(&mut self, node: MmioNode<'a>) -> Result<(),String> {
+    pub fn register_MmioNode(&mut self, node: MmioNode) -> Result<(),String> {
+        for iter in &self.mmio_table {
+            if iter.addr <= node.addr && iter.addr + iter.len >= node.addr {
+                return Err(format!("Cannot register node {}: interferes with {}",node.name, iter.name));
+            }
+            if node.name == iter.name {
+                return Err(format!("Cannot register node {} at {}: node name already exists at {}",node.name, node.addr, iter.addr));
+            }
+        }
         self.mmio_table.push( node );
         Ok(())
     }
-    #[allow(non_snake_case)]
     pub fn unregister_MmioNode(&mut self, name: String) -> Result<(),String> {
         let index = self.mmio_table.iter().position(|x| x.name == name);
         if index.is_some() {
@@ -26,21 +30,20 @@ impl<'a> MMU<'a> {
 
     // TODO: efficiency improvements to MMIO reading and writing
     pub fn get(&self,addr: u16) -> Result<u8,String> {
-        for node in &self.mmio_table {
+        for node in self.mmio_table.iter() {
             if node.owns_addr(addr) {
                 return node.get(addr)
             }
         }
-        Ok(self.mem[addr as usize])
+        Err(format!("Addr {} not owned",addr))
     }
     pub fn set(&mut self, addr: u16, value: u8) -> Result<(),String> {
-        for node in &self.mmio_table {
+        for node in self.mmio_table.iter_mut() {
             if node.owns_addr(addr) {
-                println!("{} owns {}",node.name,addr);
+                //println!("{} owns {}",node.name,addr);
                 return node.set(addr, value);
             }
         }
-        self.mem[addr as usize] = value;
-        Ok(())
+        Err(format!("Addr {} not owned",addr))
     }
 }
