@@ -646,7 +646,10 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     fn _sf(&mut self, flag: Mos6502Flag, set: bool) {
         let f: u8 = flag as u8;
-        self.ps &= !f | if set { f } else { 0 };
+        //let old_ps = self.ps;
+        self.ps &= !f;
+        if set { self.ps |= f };
+        //println!("{} -> {} ({})",old_ps,self.ps,f);
     }
     fn _cmp(&mut self, val: u8) {
         self._sf(Mos6502Flag::C, self.a > val);
@@ -1390,12 +1393,15 @@ impl Mos6502Isa for Mos6502<'_> {
     }
 
     fn sec(&mut self) {
+        self.cycles = 2;
         self._sf(Mos6502Flag::C, true);
     }
     fn sed(&mut self) {
+        self.cycles = 2;
         self._sf(Mos6502Flag::D, true);
     }
     fn sei(&mut self) {
+        self.cycles = 2;
         self._sf(Mos6502Flag::I, true);
     }
 

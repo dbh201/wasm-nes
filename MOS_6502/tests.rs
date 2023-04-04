@@ -13,6 +13,7 @@ mod AND;
 mod ASL;
 mod BXX;
 mod BIT;
+mod FLAG;
 mod JMP;
 mod LDX;
 mod LDY;

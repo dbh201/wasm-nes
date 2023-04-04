@@ -3,6 +3,7 @@ use crate::Mos6502Debug::Mos6502Debug;
 use crate::MMU::MMU;
 use std::fmt;
 
+#[derive(Clone,Copy)]
 #[repr(u8)]
 pub enum Mos6502Flag {
     C = 0x01,
