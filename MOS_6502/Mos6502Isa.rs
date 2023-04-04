@@ -518,7 +518,7 @@ impl Mos6502Isa for Mos6502<'_> {
         if add_cycle_on_page_boundary {
             self._check_page_boundary(addr, self.y);
         }
-        //println!("addr {} + {} from [{}]", addr, self.y, t);
+        //println!("addr {:X} + {:X} from [{:X}]", addr, self.y, t);
         addr + (self.y as u16)
     }
     fn _check_page_boundary(&mut self, addr: u16, off: u8) {

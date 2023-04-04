@@ -11,20 +11,24 @@
 mod ADC;
 mod AND;
 mod ASL;
-mod BranchInstructions;
 mod BIT;
-mod JumpInstructions;
+mod EOR;
 mod LDX;
 mod LDY;
 mod LDA;
+mod ORA;
 mod STX;
 mod STY;
 mod STA;
+mod BranchInstructions;
 mod FlagInstructions;
-mod StackInstructions;
-mod TransferInstructions;
 mod IncDecInstructions;
+mod JumpInstructions;
+mod StackInstructions;
 mod SystemInstructions;
+mod TransferInstructions;
+
+
 
 use crate::Mos6502::{Mos6502,Mos6502Flag};
 pub use crate::Mos6502Debug::AddrMode::*;
