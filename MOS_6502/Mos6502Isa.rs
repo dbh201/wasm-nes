@@ -1082,12 +1082,14 @@ impl Mos6502Isa for Mos6502<'_> {
         // --WARNING: possible bug here--
         // JSR pushes the "return address - 1" onto the stack. Is
         // this to compensate for hardware incrementing it somewhere?
+        // Since we're aiming for accuracy here, do the same thing
+        // and just undo it with rts
 
-        // return address would be self.pc + 2
-        let ret: u16 = self.pc + 1;
-        self._psh((ret >> 8) as u8);
+        let sr = self._addr_abs();
+        let ret: u16 = self.pc - 1;
         self._psh((ret % 256) as u8);
-        self.pc = self._addr_abs();
+        self._psh((ret >> 8) as u8);
+        self.pc = sr;
     }
 
     fn lda_imm(&mut self) {
@@ -1344,7 +1346,7 @@ impl Mos6502Isa for Mos6502<'_> {
 
     fn rts(&mut self) {
         self.cycles = 6;
-        self.pc = 1 + (self._pop() as u16) + (self._pop() as u16) << 8;
+        self.pc = 1 + ((self._pop() as u16) << 8) + (self._pop() as u16);
     }
 
     fn sbc_imm(&mut self) {

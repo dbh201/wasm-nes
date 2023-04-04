@@ -11,9 +11,9 @@
 mod ADC;
 mod AND;
 mod ASL;
-mod BXX;
+mod BranchInstructions;
 mod BIT;
-mod JMP;
+mod JumpInstructions;
 mod LDX;
 mod LDY;
 mod LDA;
