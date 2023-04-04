@@ -13,7 +13,6 @@ mod AND;
 mod ASL;
 mod BXX;
 mod BIT;
-mod FLAG;
 mod JMP;
 mod LDX;
 mod LDY;
@@ -21,6 +20,10 @@ mod LDA;
 mod STX;
 mod STY;
 mod STA;
+mod FlagInstructions;
+mod StackInstructions;
+mod TransferInstructions;
+
 use crate::Mos6502::{Mos6502,Mos6502Flag};
 pub use crate::Mos6502Debug::AddrMode::*;
 use crate::Mos6502Debug::AddrMode;

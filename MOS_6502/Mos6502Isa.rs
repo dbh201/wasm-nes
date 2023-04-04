@@ -539,15 +539,9 @@ impl Mos6502Isa for Mos6502<'_> {
     // These functions are meant to be called by instruction functions
     // to perform common calculations.
     fn _pop(&mut self) -> u8 {
-        self.bus
-            .get(
-                0x100 + {
-                    let t = self.pc;
-                    self.pc += 1;
-                    t
-                },
-            )
-            .unwrap()
+        let t = self.sp;
+        self.sp -= 1;
+        self.getmem(0x100 + t as u16)
     }
     fn _rol(&mut self, addr: u16) {
         let mut val: u8 = self.getmem(addr);
