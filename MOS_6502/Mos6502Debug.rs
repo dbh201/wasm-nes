@@ -1,6 +1,6 @@
 use std::collections::hash_map::HashMap;
 use crate::Mos6502::Mos6502;
-
+use crate::Mainbus::MemRW;
 
 fn even(v: u8) -> bool {
     v & 0x01 == 0
@@ -52,7 +52,7 @@ impl<'a> Mos6502Debug<'a> {
     
     pub fn current_instruction_info(&self, cpu: &Mos6502) -> String {
         let addr = cpu.current_instruction;
-        let op = cpu.bus.get(addr).unwrap();
+        let op = cpu.getmem(addr);
         let mode = Mos6502Debug::<'_>::_get_addr_mode(op);
         let mn = self.mnemonic[&op];
         let param: String;
@@ -71,7 +71,7 @@ impl<'a> Mos6502Debug<'a> {
             },
             AddrMode::ACCUMULATOR => param = format!("A: {:02X?}",cpu.a),
             AddrMode::ERROR       => param = format!("INVALID OPCODE"),
-            AddrMode::IMMEDIATE   => param = format!("{:02X?}",cpu.bus.get(addr+1).unwrap()),
+            AddrMode::IMMEDIATE   => param = format!("{:02X?}",cpu.getmem(addr+1)),
             AddrMode::IMPLIED     => param = format!(""),
             AddrMode::INDIRECT    => {
                 let t = cpu._fetch_u16(addr+1);
@@ -84,30 +84,30 @@ impl<'a> Mos6502Debug<'a> {
                 param = format!("({:04X?}) -> {:04X?}",t,i);
             },
             AddrMode::INDIRECT_X  => {
-                let t = cpu.bus.get(addr+1).unwrap() as u16;
+                let t = cpu.getmem(addr+1) as u16;
                 let ind: u16 = cpu._fetch_u16((t + (cpu.x as u16))%256);
-                param = format!("({:04X?}) + X:{:02X?} -> {:04X?}[{:02X?}]",t,cpu.x,ind,cpu.bus.get(ind).unwrap());
+                param = format!("({:04X?}) + X:{:02X?} -> {:04X?}[{:02X?}]",t,cpu.x,ind,cpu.getmem(ind));
             },
             AddrMode::INDIRECT_Y  => {
                 let t = cpu._fetch_u16(addr+1);
                 let ind: u16 = cpu._fetch_u16(t) + (cpu.y as u16);
-                param = format!("({:04X?}) + Y:{:02X?} -> {:04X?}[{:02X?}]",t,cpu.y,ind,cpu.bus.get(ind).unwrap());
+                param = format!("({:04X?}) + Y:{:02X?} -> {:04X?}[{:02X?}]",t,cpu.y,ind,cpu.getmem(ind));
             },
             AddrMode::RELATIVE    => {
-                let offset = cpu.bus.get(addr+1).unwrap() as i8;
+                let offset = cpu.getmem(addr+1) as i8;
                 let res: i16 = ((addr + 2) as i16) + offset as i16;
                 param = format!("({:04X?}) + {} -> {:04X?}",addr+2,offset, res as u16);
             }
             AddrMode::ZERO_PAGE   => {
-                let t = cpu.bus.get(addr+1).unwrap();
+                let t = cpu.getmem(addr+1);
                 param = format!("{:02X?} = {:04X?}", t, t as u16);
             }
             AddrMode::ZERO_PAGE_X => {
-                let t = cpu.bus.get(addr+1).unwrap();
+                let t = cpu.getmem(addr+1);
                 param = format!("{:02X?} + X:{:02X?} = {:04X?}", t, cpu.x, ((t as u16) + (cpu.x as u16))%256);
             }
             AddrMode::ZERO_PAGE_Y => {
-                let t = cpu.bus.get(addr+1).unwrap();
+                let t = cpu.getmem(addr+1);
                 param = format!("{:02X?} + Y:{:02X?} = {:04X?}", t, cpu.y, ((t as u16) + (cpu.y as u16))%256);
             }
         }

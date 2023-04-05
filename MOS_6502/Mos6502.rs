@@ -1,7 +1,11 @@
+use crate::MmioNode::MmioNode;
 use crate::Mos6502Isa::Mos6502Isa;
 use crate::Mos6502Debug::Mos6502Debug;
-use crate::MMU::MMU;
+use crate::Mainbus::Mainbus;
+pub use crate::Mainbus::MemRW;
+use std::cell::RefCell;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Clone,Copy)]
 #[repr(u8)]
@@ -17,6 +21,7 @@ pub enum Mos6502Flag {
 }
 //TODO: not public everything here
 pub struct Mos6502<'la> {
+    pub name: String,
     pub jmp_ind_bug: bool,
     pub enable_bcd: bool,
     pub x: u8,
@@ -26,15 +31,14 @@ pub struct Mos6502<'la> {
     pub pc: u16,
     pub current_instruction: u16,
     pub ps: u8,
-    pub bus: MMU,
+    pub bus: Rc<RefCell<Mainbus<'la>>>,
     pub isa: Vec<&'la dyn Fn(&mut Self)>,
     pub cycles: u8,
     pub debug: Mos6502Debug<'la>
 }
 
-
 impl<'la> Mos6502<'la> {
-    pub fn new() -> Result<Mos6502<'la>,String> {
+    pub fn new(name: String, bus: Rc<RefCell<Mainbus<'la>>>) -> Result<Mos6502<'la>,String> {
         let enable_bcd = false;
         let jmp_ind_bug = false;
         let x: u8 = 0;
@@ -44,14 +48,13 @@ impl<'la> Mos6502<'la> {
         let pc: u16 = 0xFFFC;
         let current_instruction: u16 = pc;
         let ps: u8 = 0;
-        let bus = MMU::new().unwrap();
         let cycles = 0;
         let mut isa = Vec::<&'la dyn Fn(&mut Self)>::new();
         let debug = Mos6502Debug::new();
         for _ in 0..256 {
             isa.push(&Mos6502::invalid);
         }
-        let mut ret = Mos6502 { x, y, a, sp, pc, ps, bus, isa, cycles, debug, current_instruction, enable_bcd, jmp_ind_bug };
+        let mut ret = Mos6502 { name, x, y, a, sp, pc, ps, bus, isa, cycles, debug, current_instruction, enable_bcd, jmp_ind_bug };
         ret.load_isa();
         Ok(ret)
     }
@@ -81,7 +84,7 @@ impl<'la> Mos6502<'la> {
         self.cycles = 0;
     }
     pub fn peek_opcode(&self) -> u8 {
-        self.bus.get(self.pc).unwrap()
+        self.bus.borrow().get(self.pc).unwrap()
     }
     pub fn step(&mut self) {
         self._step().expect("CPU failed to step?");
@@ -115,11 +118,14 @@ impl<'la> Mos6502<'la> {
         
         
     }
-    pub fn setmem(&mut self, addr: u16, val: u8) {
-        self.bus.set(addr,val).expect(format!("Mem write failed @{}={}",addr,val).as_ref())
+    pub fn register_MmioNode(&mut self, node: MmioNode<'la>) -> Result<(),String> {
+        self.bus.borrow_mut().register_MmioNode(node).expect("Node reg failed:");
+        //let newNode = &self.bus.borrow().mmio_table[0];
+        //println!("Mos6502: Registered {}",newNode.name);
+        Ok(())
     }
-    pub fn getmem(&self, addr: u16) -> u8 {
-        self.bus.get(addr).expect(format!("Mem read failed @{}",addr).as_ref())
+    pub fn unregister_MmioNode(&mut self, name: String) -> Result<(),String> {
+        self.bus.borrow_mut().unregister_MmioNode(name)
     }
     fn invalid(&mut self) {
         println!("Invalid opcode detected");
@@ -139,6 +145,14 @@ impl fmt::Display for Mos6502<'_> {
             self.debug.current_instruction_info(self),
             self.cycles
         )
+    }
+}
+impl MemRW for Mos6502<'_> {
+    fn setmem(&mut self, addr: u16, val: u8) {
+        self.bus.borrow_mut().set(addr,val).expect(format!("Mos6502:").as_ref());
+    }
+    fn getmem(&self, addr: u16) -> u8 {
+        self.bus.borrow().get(addr).expect(format!("Mos6502:").as_ref())
     }
 }
 

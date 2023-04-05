@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 mod MmioNode;
-mod MMU;
+mod Mainbus;
 mod RamBank;
 mod PPU;
 mod APUJoystick;

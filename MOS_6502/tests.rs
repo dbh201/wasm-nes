@@ -35,22 +35,37 @@ mod TransferInstructions;
 
 
 
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{Mos6502::{Mos6502,Mos6502Flag}, MmioNode::MmioNode};
 pub use crate::Mos6502Debug::AddrMode::*;
 use crate::Mos6502Debug::AddrMode;
+use crate::Mainbus::{Mainbus, MemRW};
 
 // Utility functions
 pub fn t(_cpu: &Mos6502, c: bool, msg: &str) {
     assert!(c, "{}\n-----\n{}\n-----\n", msg, _cpu);
 }
+#[test]
+pub fn test_mem(){
+    let _cpu = cpu_prep(0x1234,"NOP",IMPLIED);
+    let op = _cpu.getmem(0x1234);
+    assert!(op == 0xEA,"op was {:02X}",op);
+}
 pub fn cpu_prep(addr: u16, mnem: &str, mode: AddrMode) -> Mos6502 {
-    let mut _cpu: Mos6502 = Mos6502::new().unwrap();
-    let mut mem = MmioNode::new("64KB RAM".to_string(),0,0xFFFF);
-    mem.make_ram().expect("cpu_prep ERR:");
-    _cpu.bus.register_MmioNode(mem).expect("cpu_prep ERR:");
+    let mut _cpu = Mos6502::new(
+        "TESTCPU".to_owned(),
+        Rc::new(RefCell::new(Mainbus::new("TESTMMU".to_owned()).unwrap()))
+    ).unwrap();
+    let mut mem = MmioNode::new("64KB RAM".to_string());
     let op = _cpu.debug.get_opcode(mnem, mode);
-    _cpu._place_u16(0xFFFC,addr);
-    _cpu.setmem(addr,op);
+    mem.add_addr_range(0,0xFFFF);
+    mem.make_ram(0xFFFF).expect("cpu_prep ERR:");
+    mem.set(addr,op).expect("TestCpu:");
+    //println!("memget: {:02X}", mem.get(addr).unwrap());
+    _cpu.register_MmioNode(mem).expect("TestCpu:");
+    //println!("get: {:02X}", _cpu.getmem(addr));
+    _cpu._place_u16(0xFFFC, addr);
     _cpu.reset();
     _cpu
 }

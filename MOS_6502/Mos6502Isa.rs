@@ -4,6 +4,7 @@
 // - flags should be set
 
 use crate::Mos6502::{Mos6502,Mos6502Flag};
+use crate::Mainbus::MemRW;
 
 
 pub trait Mos6502Isa {
@@ -387,13 +388,10 @@ impl Mos6502Isa for Mos6502<'_> {
     // Addr functions return the address that would need to be accessed.
     // ONLY ONE of decode or addr should be called, and only once per instruction.
     fn _decode_imm(&mut self) -> u8 {
-        self.bus
-            .get({
-                let t = self.pc;
-                self.pc += 1;
-                t
-            })
-            .unwrap()
+        let t = self.pc;
+        self.pc += 1;
+        self.getmem(t)
+            
     }
 
     fn _decode_zp(&mut self) -> u8 {
@@ -401,13 +399,10 @@ impl Mos6502Isa for Mos6502<'_> {
         self.getmem(addr)
     }
     fn _addr_zp(&mut self) -> u16 {
-        self.bus
-            .get({
-                let t = self.pc;
-                self.pc += 1;
-                t
-            })
-            .unwrap() as u16
+        let t = self.pc;
+        self.pc += 1;
+        self.getmem(t)
+             as u16
     }
 
     fn _decode_zp_x(&mut self) -> u8 {
@@ -416,14 +411,10 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     #[allow(arithmetic_overflow)]
     fn _addr_zp_x(&mut self) -> u16 {
-        (self
-            .bus
-            .get({
-                let t = self.pc;
-                self.pc += 1;
-                t
-            })
-            .unwrap() as u16
+        let t = self.pc;
+        self.pc += 1;
+        (self.getmem(t)
+            as u16
             + self.x as u16) % 256
     }
 
@@ -433,14 +424,10 @@ impl Mos6502Isa for Mos6502<'_> {
     }
     #[allow(arithmetic_overflow)]
     fn _addr_zp_y(&mut self) -> u16 {
-        ((self
-            .bus
-            .get({
-                let t = self.pc;
-                self.pc += 1;
-                t
-            })
-            .unwrap() as u16)
+        let t = self.pc;
+        self.pc += 1;
+        ((self.getmem(t)
+            as u16)
             + (self.y as u16)) % 256
     }
 
