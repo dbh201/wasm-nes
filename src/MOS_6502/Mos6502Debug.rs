@@ -245,7 +245,7 @@ impl<'a> Mos6502Debug<'a> {
                     console_log!("OK: {} {:X}({} == {})",mnemonic,*key, self.get_addr_mode(*key), self.addr_mode[&mode]);
                     return *key
                 }
-                console_log!("{} {:X}({} != {})",mnemonic,*key, self.get_addr_mode(*key), self.addr_mode[&mode])
+                console_log!("{} {:X}({} != {})",mnemonic,*key, self.get_addr_mode(*key), self.addr_mode[&mode]);
             }
         }
         console_log!("could not find opcode {} {}",mnemonic,self.addr_mode[&mode]);
