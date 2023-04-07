@@ -1,0 +1,189 @@
+        //TODO: these instructions are likely grouped
+        // bitwise, so we should have range/AND matches
+        // I.E. flag instructions are all 0bxxx11000
+        //
+        // Better yet, use an array of function pointers
+        // if it's possible with wasm_bindgen
+        match bus.get(self.pc++) {
+            0x21 => self.and_ind_x(),
+            0x25 => self.and_zp(),
+            0x29 => self.and_imm(), 
+            0x2D => self.and_abs(),
+            0x31 => self.and_ind_y(),
+            0x35 => self.and_zp_x(),
+            0x39 => self.and_abs_y(),
+            0x3D => self.and_abs_x(),
+
+            0x06 => self.asl_zp(),
+            0x0A => self.asl_acc(),
+            0x0E => self.asl_abs(),
+            0x16 => self.asl_zp_x(),
+            0x1E => self.asl_abs_x(),
+
+            0x49 => self.eor_imm(),
+            0x45 => self.eor_zp(),
+            0x55 => self.eor_zp_x(),
+            0x4D => self.eor_abs(),
+            0x5D => self.eor_abs_x(),
+            0x59 => self.eor_abs_y(),
+            0x41 => self.eor_ind_x(),
+            0x51 => self.eor_ind_y(),
+
+            0x4A => self.lsr_acc(),
+            0x46 => self.lsr_zp(),
+            0x56 => self.lsr_zp_x(),
+            0x4E => self.lsr_abs(),
+            0x5E => self.lsr_abs_x(),
+
+            0x09 => self.ora_imm(),
+            0x05 => self.ora_zp(),
+            0x15 => self.ora_zp_x(),
+            0x0D => self.ora_abs(),
+            0x1D => self.ora_abs_x(),
+            0x19 => self.ora_abs_y(),
+            0x01 => self.ora_ind_x(),
+            0x11 => self.ora_ind_y(),
+ 
+            0x2A => self.rol_acc(),
+            0x26 => self.rol_zp(),
+            0x36 => self.rol_zp_x(),
+            0x2E => self.rol_abs(),
+            0x3E => self.rol_abs_x(),
+
+            0x6A => self.ror_acc(),
+            0x66 => self.ror_zp(),
+            0x76 => self.ror_zp_x(),
+            0x6E => self.ror_abs(),
+            0x7E => self.ror_abs_x(),
+
+            0x10 => self.bpl(),
+            0x30 => self.bmi(),
+            0x50 => self.bvc(),
+            0x70 => self.bvs(),
+            0x90 => self.bcc(),
+            0xB0 => self.bcs(),
+            0xD0 => self.bne(),
+            0xF0 => self.beq(),
+
+            0xC9 => self.cmp_imm(),
+            0xC5 => self.cmp_zp(),
+            0xD5 => self.cmp_zp_x(),
+            0xCD => self.cmp_abs(),
+            0xDD => self.cmp_abs_x(),
+            0xD9 => self.cmp_abs_y(),
+            0xC1 => self.cmp_ind_x(),
+            0xD1 => self.cmp_ind_y(),
+
+            0x24 => self.bit_zp(),
+            0x2C => self.bit_abs(),
+
+            0xE0 => self.cpx_imm(),
+            0xE4 => self.cpx_zp(),
+            0xEC => self.cpx_abs(),
+
+            0xC0 => self.cpy_imm(),
+            0xC4 => self.cpy_zp(),
+            0xCC => self.cpy_abs(),
+
+            0x18 => self.clc(),
+            0x38 => self.sec(),
+            0xD8 => self.cld(),
+            0xF8 => self.sed(),
+            0x58 => self.cli(),
+            0x78 => self.sei(),
+            0xB8 => self.clv(),
+
+            0x4C => self.jmp_abs(),
+            0x6C => self.jmp_ind(),
+            0x60 => self.rts(),
+            0x20 => self.jsr(),
+            0x40 => self.rti(),
+
+            0x69 => self.adc_imm(),
+            0x65 => self.adc_zp(),
+            0x75 => self.adc_zp_x(),
+            0x6D => self.adc_abs(),
+            0x7D => self.adc_abs_x(),
+            0x79 => self.adc_abs_y(),
+            0x61 => self.adc_ind_x(),
+            0x71 => self.adc_ind_y(),
+
+            0xE9 => self.sbc_imm(),
+            0xE5 => self.sbc_zp(),
+            0xF5 => self.sbc_zp_x(),
+            0xED => self.sbc_abs(),
+            0xFD => self.sbc_abs_x(),
+            0xF9 => self.sbc_abs_y(),
+            0xE1 => self.sbc_ind_x(),
+            0xF1 => self.sbc_ind_y(),
+
+            0xA9 => self.lda_imm(),
+            0xA5 => self.lda_zp(),
+            0xB5 => self.lda_zp_x(),
+            0xAD => self.lda_abs(),
+            0xBD => self.lda_abs_x(),
+            0xB9 => self.lda_abs_y(),
+            0xA1 => self.lda_ind_x(),
+            0xB1 => self.lda_ind_y(),
+
+            0x85 => self.sta_zp(),
+            0x95 => self.sta_zp_x(),
+            0x8D => self.sta_abs(),
+            0x9D => self.sta_abs_x(),
+            0x99 => self.sta_abs_y(),
+            0x81 => self.sta_ind_x(),
+            0x91 => self.sta_ind_y(),
+
+            0xA2 => self.ldx_imm(),
+            0xA6 => self.ldx_zp(),
+            0xB6 => self.ldx_zp_y(),
+            0xAE => self.ldx_abs(),
+            0xBE => self.ldx_abs_y(),
+
+            0x86 => self.stx_zp(),
+            0x96 => self.stx_zp_y(),
+            0x8E => self.stx_abs(),
+
+            0xA0 => self.ldy_imm(),
+            0xA4 => self.ldy_zp(),
+            0xB4 => self.ldy_zp_x(),
+            0xAC => self.ldy_abs(),
+            0xBC => self.ldy_abs_x(),
+
+            0x84 => self.sty_zp(),
+            0x94 => self.sty_zp_x(),
+            0x8C => self.sty_abs(),
+
+            0xC6 => self.dec_zp(),
+            0xD6 => self.dec_zp_x(),
+            0xCE => self.dec_abs(),
+            0xDE => self.dec_abs_x(),
+
+            0xE6 => self.inc_zp(),
+            0xF6 => self.inc_zp_x(),
+            0xEE => self.inc_abs(),
+            0xFE => self.inc_abs_x(),
+
+            0xAA => self.tax(),
+            0xA8 => self.tay(),
+            0x8A => self.txa(),
+            0x98 => self.tya(),
+
+            0xCA => self.dex(),
+            0x88 => self.dey(),
+            0xE8 => self.inx(),
+            0xC8 => self.iny(),
+
+            0x48 => self.pha(),
+            0x08 => self.php(),
+            0x9A => self.txs(),
+
+            0x68 => self.pla(),
+            0xBA => self.tsx(),
+
+            0x28 => self.plp(),
+
+            0x00 => self.brk(),
+            0xEA => self.nop(),
+            _ => self.invalid()
+        }

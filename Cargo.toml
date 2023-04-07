@@ -1,5 +1,5 @@
 [package]
-name = "webgl-2d-software-renderer"
+name = "webgl-nes-rust"
 version = "0.1.0"
 edition = "2021"
 
