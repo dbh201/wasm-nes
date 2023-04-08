@@ -70,6 +70,22 @@ impl<'nes> NES<'nes> {
     pub fn reset(&mut self) -> Result<(), String> {
         self.cpu.reset()
     }
+    // TODO: maybe wait or check for vblank on the PPU side of things
+    pub fn step_frame(&mut self) -> Result<(), String> {
+        let cpu_count1: usize;
+        let cpu_count2: usize;
+        if self.NTSC {
+            cpu_count1 = 29780;
+            cpu_count2 = 29781;
+        } else {
+            cpu_count1 = 33247;
+            cpu_count2 = 33248;
+        }
+        while self.clock % cpu_count1 != 0 && self.clock % (cpu_count1 + cpu_count2) != 0 {
+            self.clock_tick()?;
+        }
+        self.clock_tick()
+    }
     pub fn clock_tick(&mut self) -> Result<(),String> {
         if !self.cart_inserted {
             return Ok(());
@@ -84,10 +100,10 @@ impl<'nes> NES<'nes> {
             };
             Ok(())
         } else {
-            if (self.clock % 12) == 1 {
+            if (self.clock % 16) == 1 {
                 return self.cpu._clock_tick()
             };
-            if (self.clock % 4) == 1 {
+            if (self.clock % 5) == 1 {
                 return self.mainbus.borrow_mut()._clock_tick(MmioType::PPU, None)
             };
             Ok(())
