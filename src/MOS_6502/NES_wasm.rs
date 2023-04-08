@@ -35,7 +35,12 @@ pub fn run_nes() -> Result<(), JsValue> {
         let resp: Vec<u8> = Uint8Array::new(&onload_buf.borrow_mut().response().ok().unwrap()).to_vec();
         console_log!("Loading cart...");
         let mut cart = Cartridge::new("Super Mario Bros".to_owned()).unwrap();
-        cart.load_mapper(&resp,0);
+        console_log!("Mapping cart of len {:08X}...",&resp.len());
+        let ret = cart.load_nes_file(&resp).err();
+        if ret.is_some() {
+            console_log!("{}",ret.unwrap());
+        }
+        console_log!("Inserting cart...");
         let r = onload_nes.borrow_mut().insert_cart(cart);
         if r.is_err() {
             console_log!("Couldn't insert cart: {}", r.unwrap_err());
@@ -50,6 +55,9 @@ pub fn run_nes() -> Result<(), JsValue> {
     request.borrow_mut().send()?;
     let mut start = Date::now();
     let mut elapsed: f64 = 0.0;
+    let mut frame_start: f64 = 0.0;
+    let mut idle: f64 = 0.0;
+    let mut clocks = 0;
     console_log!("Initializing SoftwareRenderer...");
     let mut rnd = WebGl2DSoftwareRenderer::new("nes-canvas",320,240)?;
     console_log!("SoftwareRenderer initialized.");
@@ -61,17 +69,22 @@ pub fn run_nes() -> Result<(), JsValue> {
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mut nr = n.borrow_mut();
         if nr.cart_inserted {
-            while nr.clock % 89341 != 0 && nr.clock % (89341+89342) != 0 {
-                nr.clock_tick();
+            idle += elapsed - frame_start;
+            frame_start = Date::now();
+            clocks = nr.clock;
+            let ret = nr.step_frame().err();
+            if ret.is_some() {
+                console_log!("{}", ret.unwrap());
             }
-            nr.clock_tick();
+            clocks = nr.clock - clocks;
             rnd.draw();
             frames += 1;
             elapsed = Date::now();
             if elapsed - start > 1000.0 {
-                console_log!("{} ticks, {} fps", nr.clock, (frames as f64) * 1000.0 / (elapsed - start));
+                console_log!("{} ticks per frame, {} fps ({} ms idle)", clocks, (frames as f64) * 1000.0 / (elapsed - start), idle);
                 start = elapsed;
                 frames = 0;
+                idle = 0.0;
             }
         }
         request_animation_frame(f.borrow().as_ref().unwrap())
