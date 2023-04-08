@@ -105,6 +105,8 @@ impl<'a> MmioNode<'a> {
             Err(format!("MmioNode {}: cannot be made CART because it already has a type", self.name))
         }        
     }
+    // might use this for cartridges later
+    #[allow(dead_code)]
     pub fn rem_addr_range(&mut self, addr: u16) -> Result<(),String> {
         for i in 0..self.ownership.len() {
             if self.ownership[i][0] == addr {
@@ -156,10 +158,9 @@ impl<'a> MmioNode<'a> {
         match self.obj_type {
             MmioType::UNSET => Err(format!("MmioNode {}: get attempt @{:04X} but backing store uninitialized", self.name, addr)),
             MmioType::RAM => {
-                let val = self.ram.as_mut().unwrap().get(addr);
-                let resp = val.clone().ok();
-                console_log!("MmioNode {}: get {:04X} returned {}",self.name,addr,resp.unwrap());
-                return val
+                let val = self.ram.as_mut().unwrap().get(addr)?;
+                console_log!("MmioNode {}: get {:04X} returned {}", self.name, addr, val);
+                return Ok(val)
             },
             MmioType::CART => self.cart.as_mut().unwrap().get(addr),
             _ => Err(format!("MmioNode {}: get attempt @{:04X} but type not yet implemented", self.name, addr))
@@ -172,7 +173,9 @@ impl<'a> MmioNode<'a> {
             MmioType::RAM => {
                 return self.ram.as_mut().unwrap().set(addr, val)
             },
-            MmioType::CART => self.cart.as_mut().unwrap().set(addr, val),
+            MmioType::CART => {
+                return self.cart.as_mut().unwrap().set(addr, val)
+            }
             _ => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but type not yet implemented", self.name, addr, val))
         }
     }
