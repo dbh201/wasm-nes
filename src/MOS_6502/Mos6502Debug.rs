@@ -1,5 +1,5 @@
 use std::collections::hash_map::HashMap;
-use crate::console_log;
+use super::console_log;
 
 use super::Mos6502::Mos6502;
 use super::AddressBus::MemRW;

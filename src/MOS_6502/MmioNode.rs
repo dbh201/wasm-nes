@@ -1,10 +1,12 @@
-use crate::console_log;
+
 
 use super::AddressBus::AddressBus;
 use super::RamBank::RamBank;
 use super::PPU::PPU;
 use super::APUJoystick::APUJoystick;
 use super::Cartridge::Cartridge;
+use super::console_log;
+
 use std::fmt;
 use std::{cell::RefCell};
 use std::{rc::Rc};
@@ -59,9 +61,9 @@ impl<'a> MmioNode<'a> {
         };
         res
     }
-    pub fn make_ram(&mut self, len: u16) -> Result<(),String> {
+    pub fn make_ram(&mut self, last_addr: u16) -> Result<(),String> {
         if self.obj_type == MmioType::UNSET {
-            self.ram = Some(RamBank::new(len));
+            self.ram = Some(RamBank::new(last_addr));
             self.obj_type = MmioType::RAM;
             Ok(())
         } else {

@@ -1,9 +1,9 @@
-use crate::console_log;
-
 use super::MmioNode::MmioNode;
 use super::Mos6502Isa::Mos6502Isa;
 use super::Mos6502Debug::Mos6502Debug;
 use super::AddressBus::{AddressBus, MemRW};
+use super::console_log;
+
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;

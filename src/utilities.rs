@@ -16,6 +16,6 @@ macro_rules! real_console_log {
 
 
 #[macro_export]
-macro_rules! console_log {
+macro_rules! dummy_console_log {
     ($($t:tt)*) => ()
 }

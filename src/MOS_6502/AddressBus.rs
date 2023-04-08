@@ -1,6 +1,5 @@
-use crate::console_log;
-
 use super::MmioNode::{MmioNode, MmioType};
+use super::console_log;
 
 pub struct AddressBus<'a> {
     pub name: String,

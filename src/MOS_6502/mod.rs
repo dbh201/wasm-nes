@@ -14,5 +14,4 @@ pub mod Mos6502;
 mod tests;
 mod NES_wasm;
 
-pub use crate::real_console_log as console_log;
-
+pub use crate::dummy_console_log as console_log;

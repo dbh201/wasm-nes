@@ -3,11 +3,11 @@
 // - calculation should be done
 // - flags should be set
 
-use crate::console_log;
+
 
 use super::Mos6502::{Mos6502,Mos6502Flag};
 use super::AddressBus::MemRW;
-
+use super::console_log;
 
 pub trait Mos6502Isa {
     fn load_isa(&mut self);

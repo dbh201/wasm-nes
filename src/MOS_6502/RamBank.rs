@@ -1,6 +1,7 @@
-use crate::console_log;
+
 
 use super::MmioNode::MmioObject;
+use super::console_log;
 
 pub struct RamBank {
     data: Vec<u8>

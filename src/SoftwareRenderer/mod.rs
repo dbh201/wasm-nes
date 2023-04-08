@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlTexture, WebGlProgram, WebGlShader};
 use getrandom::getrandom;
 
-use crate::console_log;
+use crate::real_console_log as console_log;
 
 #[wasm_bindgen]
 pub struct WebGl2DSoftwareRenderer {

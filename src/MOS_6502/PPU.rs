@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 use super::{AddressBus::AddressBus, MmioNode::MmioObject};
+use super::console_log;
 use std::{cell::{RefCell}, rc::Rc};
 
 #[repr(u8)]
@@ -51,6 +52,7 @@ pub struct PPU<'a> {
 
 impl<'a> PPU<'_> {
     pub fn new(bus: Rc<RefCell<AddressBus<'a>>>, mmu: Rc<RefCell<AddressBus<'a>>>) -> Result<PPU<'a>,String> {
+        console_log!("Init PPU");
         Ok(PPU {
             ppuctrl: 0,
             ppumask: 0,

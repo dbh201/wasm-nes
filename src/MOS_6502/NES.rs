@@ -1,16 +1,18 @@
 use std::{cell::RefCell, rc::Rc};
-use crate::console_log;
+
 
 use super::AddressBus::AddressBus;
 use super::Cartridge::Cartridge;
 use super::MmioNode::{MmioNode, MmioType};
 use super::Mos6502::Mos6502;
+use super::console_log;
 
 pub struct NES<'nes> {
     pub cpu: Mos6502<'nes>,
     mainbus: Rc<RefCell<AddressBus<'nes>>>,
     ppu_bus: Rc<RefCell<AddressBus<'nes>>>,
     pub clock: usize,
+    pub cart_inserted: bool,
     NTSC: bool
 }
 impl<'nes> NES<'nes> {
@@ -40,18 +42,38 @@ impl<'nes> NES<'nes> {
         apu.make_apu()?;
         apu.add_addr_range(0x4000,0x401F)?;
         bus.borrow_mut().register_MmioNode(apu).expect("NES APU:");
-        Ok(NES { cpu, mainbus: bus, ppu_bus: ppu_mmu, clock: 0, NTSC: true })
+        Ok(NES { cpu, mainbus: bus, ppu_bus: ppu_mmu, clock: 0, NTSC: true, cart_inserted: false })
     }
     pub fn insert_cart(&mut self, cart: Cartridge<'nes>) -> Result<(), String> {
         let mut node = MmioNode::new(cart.name());
         node.insert_cart(cart)?;
         node.add_addr_range(0x4020, 0xFFFF)?;
-        self.mainbus.borrow_mut().register_MmioNode(node)
+        self.mainbus.borrow_mut().register_MmioNode(node)?;
+        self.cart_inserted = true;
+        Ok(())
+    }
+    pub fn remove_cart(&mut self) -> Result<(), String> {
+        let mut bus = self.mainbus.borrow_mut();
+        let mut name: Option<String> = None;
+        for node in bus.mmio_table.iter() {
+            if node.obj_type == MmioType::CART {
+                name = Some(node.name.clone());
+                break;
+            }
+        }
+        if name.is_some() {
+            self.cart_inserted = false;
+            return bus.unregister_MmioNode(name.unwrap());
+        }
+        Err("No cart inserted".to_owned())
     }
     pub fn reset(&mut self) -> Result<(), String> {
         self.cpu.reset()
     }
     pub fn clock_tick(&mut self) -> Result<(),String> {
+        if !self.cart_inserted {
+            return Ok(());
+        }
         self.clock += 1;
         if self.NTSC {
             if (self.clock % 12) == 1 {

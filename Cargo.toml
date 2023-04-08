@@ -29,5 +29,7 @@ features = [
   'WebGlTexture',
   'Window',
   'Node',
-  'HtmlElement'
+  'HtmlElement',
+  'XmlHttpRequest',
+  'XmlHttpRequestResponseType'
 ]
