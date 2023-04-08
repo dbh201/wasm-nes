@@ -35,7 +35,7 @@ fn test_JSR_RTS() {
     let rts = _cpu.debug.get_opcode("RTS", IMPLIED);
     _cpu.setmem(0x8765,rts);
     _cpu.step();
-    let ret = _cpu._fetch_u16(_cpu.sp as u16 + 0x101);
+    let ret = _cpu._fetch_u16(_cpu.sp as u16 + 0x101).unwrap();
     t(&_cpu,_cpu.pc == 0x8765,format!("jsr pc{} != {}", _cpu.pc, 0x8765).as_ref());
     t(&_cpu,ret == 0x0802,format!("jsr ret{} != {}", ret, 0x0801).as_ref());
     _cpu.step();

@@ -16,7 +16,7 @@ fn test_INC_ZP() {
     _cpu.setmem(0x0801,0x87);
     _cpu.setmem(0x87,0xED);
     _cpu.step();
-    let res = _cpu.getmem(0x87);
+    let res = _cpu.getmem(0x87).unwrap();
     assert_inc(&_cpu,res,0xED);
 }
 #[test]
@@ -26,7 +26,7 @@ fn test_INC_ZP_X() {
     _cpu.x = 2;
     _cpu.setmem(0x87,0xFF);
     _cpu.step();
-    let res = _cpu.getmem(0x87);
+    let res = _cpu.getmem(0x87).unwrap();
     assert_inc(&_cpu,res,0xFF);
 }
 #[test]
@@ -36,7 +36,7 @@ fn test_INC_ABS() {
     _cpu.setmem(0x0802,0xA9);
     _cpu.setmem(0xA987,0xED);
     _cpu.step();
-    let res = _cpu.getmem(0xA987);
+    let res = _cpu.getmem(0xA987).unwrap();
     assert_inc(&_cpu,res,0xED);
 }
 #[test]
@@ -47,7 +47,7 @@ fn test_INC_ABS_X() {
     _cpu.x = 4;
     _cpu.setmem(0xA987,0x7F);
     _cpu.step();
-    let res = _cpu.getmem(0xA987);
+    let res = _cpu.getmem(0xA987).unwrap();
     assert_inc(&_cpu, res, 0x7F);
 }
 #[test]
@@ -70,7 +70,7 @@ fn test_DEC_ZP() {
     _cpu.setmem(0x0801,0x87);
     _cpu.setmem(0x87,0xED);
     _cpu.step();
-    let res = _cpu.getmem(0x87);
+    let res = _cpu.getmem(0x87).unwrap();
     assert_dec(&_cpu,res,0xED);
 }
 #[test]
@@ -80,7 +80,7 @@ fn test_DEC_ZP_X() {
     _cpu.x = 2;
     _cpu.setmem(0x87,0xFF);
     _cpu.step();
-    let res = _cpu.getmem(0x87);
+    let res = _cpu.getmem(0x87).unwrap();
     assert_dec(&_cpu,res,0xFF);
 }
 #[test]
@@ -90,7 +90,7 @@ fn test_DEC_ABS() {
     _cpu.setmem(0x0802,0xA9);
     _cpu.setmem(0xA987,0x00);
     _cpu.step();
-    let res = _cpu.getmem(0xA987);
+    let res = _cpu.getmem(0xA987).unwrap();
     assert_dec(&_cpu,res,0x00);
 }
 #[test]
@@ -101,7 +101,7 @@ fn test_DEC_ABS_X() {
     _cpu.x = 4;
     _cpu.setmem(0xA987,0x80);
     _cpu.step();
-    let res = _cpu.getmem(0xA987);
+    let res = _cpu.getmem(0xA987).unwrap();
     assert_dec(&_cpu, res, 0x80);
 }
 #[test]

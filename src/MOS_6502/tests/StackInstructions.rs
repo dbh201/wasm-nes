@@ -5,7 +5,7 @@ fn test_PHA() {
     let mut _cpu = cpu_prep(0,"PHA", IMPLIED);
     _cpu.a = 0x99;
     _cpu.step();
-    let res = _cpu.getmem(0x01FF);
+    let res = _cpu.getmem(0x01FF).unwrap();
     t(&_cpu, _cpu.a == res,format!("a{} != m{}",_cpu.a,res).as_ref());
 }
 #[test]
@@ -13,7 +13,7 @@ fn test_PHP() {
     let mut _cpu = cpu_prep(0,"PHP", IMPLIED);
     _cpu.ps = 0x99;
     _cpu.step();
-    let res = _cpu.getmem(0x01FF);
+    let res = _cpu.getmem(0x01FF).unwrap();
     t(&_cpu, _cpu.ps == res,format!("ps{} != m{}",_cpu.ps,res).as_ref());
 }
 #[test]

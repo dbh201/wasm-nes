@@ -72,7 +72,7 @@ fn test_ADC_ZP_X() {
 #[test]
 fn test_ADC_ABS() {
     let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=255 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -101,7 +101,7 @@ fn test_ADC_ABS() {
 #[test]
 fn test_ADC_ABS_X() {
     let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE_X);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=254 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -131,7 +131,7 @@ fn test_ADC_ABS_X() {
 #[test]
 fn test_ADC_ABS_Y() {
     let mut _cpu = cpu_prep(0x0800, "ADC", ABSOLUTE_Y);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=254 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -161,7 +161,7 @@ fn test_ADC_ABS_Y() {
 #[test]
 fn test_ADC_IND_X() {
     let mut _cpu = cpu_prep(0x0800, "ADC", INDIRECT_X);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=252 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -194,7 +194,7 @@ fn test_ADC_IND_X() {
 #[test]
 fn test_ADC_IND_Y() {
     let mut _cpu = cpu_prep(0x0800, "ADC", INDIRECT_Y);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=252 {
         for imm in 0..=255 {
             for carry in [0, 1] {

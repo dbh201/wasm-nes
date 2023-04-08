@@ -5,7 +5,7 @@ fn test_STY_ZP() {
     _cpu.setmem(1,255);
     _cpu.y = 0x88;
     _cpu.step();
-    let res = _cpu.getmem(255);
+    let res = _cpu.getmem(255).unwrap();
     t(&_cpu, res == 0x88,format!("{} != {}",res,0x88).as_ref());
 }
 #[test]
@@ -15,7 +15,7 @@ fn test_STY_ZP_X() {
     _cpu.x = 255;
     _cpu.y = 0x88;
     _cpu.step();
-    let res = _cpu.getmem(254);
+    let res = _cpu.getmem(254).unwrap();
     t(&_cpu, res == 0x88,format!("{} != {}",res,0x88).as_ref());
 }
 #[test]
@@ -25,6 +25,6 @@ fn test_STY_ABS() {
     _cpu.setmem(2,0xAB);
     _cpu.y = 0x88;
     _cpu.step();
-    let res = _cpu.getmem(0xABCD);
+    let res = _cpu.getmem(0xABCD).unwrap();
     t(&_cpu, res == 0x88,format!("{} != {}",res,0x88).as_ref());
 }

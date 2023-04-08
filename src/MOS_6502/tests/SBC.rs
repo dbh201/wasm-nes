@@ -91,7 +91,7 @@ fn test_SBC_ZP_X() {
 #[test]
 fn test_SBC_ABS() {
     let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=255 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -120,7 +120,7 @@ fn test_SBC_ABS() {
 #[test]
 fn test_SBC_ABS_X() {
     let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE_X);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=254 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -150,7 +150,7 @@ fn test_SBC_ABS_X() {
 #[test]
 fn test_SBC_ABS_Y() {
     let mut _cpu = cpu_prep(0x0800, "SBC", ABSOLUTE_Y);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=254 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -180,7 +180,7 @@ fn test_SBC_ABS_Y() {
 #[test]
 fn test_SBC_IND_X() {
     let mut _cpu = cpu_prep(0x0800, "SBC", INDIRECT_X);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=252 {
         for imm in 0..=255 {
             for carry in [0, 1] {
@@ -213,7 +213,7 @@ fn test_SBC_IND_X() {
 #[test]
 fn test_SBC_IND_Y() {
     let mut _cpu = cpu_prep(0x0800, "SBC", INDIRECT_Y);
-    let op = _cpu.getmem(0x0800);
+    let op = _cpu.getmem(0x0800).unwrap();
     for a in 0..=252 {
         for imm in 0..=255 {
             for carry in [0, 1] {

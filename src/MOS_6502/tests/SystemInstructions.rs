@@ -9,8 +9,8 @@ fn test_BRK_RTI() {
     _cpu.setmem(0xBEEF, op);
     _cpu.ps = 0b11001000;
     _cpu.step();
-    let ps = _cpu.getmem(0x01FD);
-    let pc = _cpu._fetch_u16(0x01FE);
+    let ps = _cpu.getmem(0x01FD).unwrap();
+    let pc = _cpu._fetch_u16(0x01FE).unwrap();
     t(&_cpu, _cpu.ps == ps | (Mos6502Flag::B as u8), format!("BRK flags: {:08b} != {:08b}", _cpu.ps, ps).as_ref());
     t(&_cpu, pc == 0x0801, format!("BRK pc: {:08b} != {:08b}", _cpu.pc, 0x0801).as_ref());
     _cpu.step();

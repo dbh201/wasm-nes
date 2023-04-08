@@ -7,6 +7,7 @@
 */
 #![allow(dead_code)]
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 // Test modules
 mod ADC;
 mod AND;
@@ -39,13 +40,14 @@ use std::{cell::RefCell, rc::Rc};
 
 
 
-use crate::console_log;
+
 
 use super::{Mos6502::{Mos6502,Mos6502Flag}, MmioNode::MmioNode};
 pub use super::Mos6502Debug::AddrMode::*;
 use super::Mos6502Debug::AddrMode;
 use super::AddressBus::AddressBus;
 use super::AddressBus::MemRW;
+use super::console_log;
 
 // Utility functions
 pub fn t(_cpu: &Mos6502, c: bool, msg: &str) {

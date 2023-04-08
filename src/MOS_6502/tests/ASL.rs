@@ -20,7 +20,7 @@ fn test_ASL_ZP() {
     _cpu.setmem(0x0801,0x55);
     _cpu.setmem(0x55,0x77);
     _cpu.step();
-    let res = _cpu.getmem(0x55);
+    let res = _cpu.getmem(0x55).unwrap();
     assert_ASL(&_cpu,res,0x77);   
 }
 #[test]
@@ -30,7 +30,7 @@ fn test_ASL_ZP_X() {
     _cpu.x=0xFF;
     _cpu.setmem(0x54,0x77);
     _cpu.step();
-    let res = _cpu.getmem(0x54);
+    let res = _cpu.getmem(0x54).unwrap();
     assert_ASL(&_cpu,res,0x77);
 }
 #[test]
@@ -40,7 +40,7 @@ fn test_ASL_ABS() {
     _cpu.setmem(0x0802,0x66);
     _cpu.setmem(0x6655,0x77);
     _cpu.step();
-    let res = _cpu.getmem(0x6655);
+    let res = _cpu.getmem(0x6655).unwrap();
     assert_ASL(&_cpu,res,0x77);
 }
 #[test]
@@ -51,6 +51,6 @@ fn test_ASL_ABS_X() {
     _cpu.x=0xFF;
     _cpu.setmem(0x6754,0x77);
     _cpu.step();
-    let res = _cpu.getmem(0x6754);
+    let res = _cpu.getmem(0x6754).unwrap();
     assert_ASL(&_cpu,res,0x77);
 }
