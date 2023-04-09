@@ -2,15 +2,23 @@
 // mappers should Have their own MmioObjects...
 // should they be managed by another bus? 
 
-use super::{AddressBus::AddressBus, MmioNode::{MmioObject, MmioNode}};
+use std::{rc::Rc, cell::RefCell};
+
+use super::{AddressBus::AddressBus, MmioNode::MmioNode};
 use super::console_log;
 
 pub struct Cartridge<'a> {
-    pub data: AddressBus<'a>
+    name: String,
+    mainbus: Rc<RefCell<AddressBus<'a>>>,
+    mainNodes: Vec<MmioNode<'a>>,
+    ppu_bus: Rc<RefCell<AddressBus<'a>>>,
+    ppuNodes: Vec<MmioNode<'a>>,
 }
+
+#[allow(dead_code)]
 struct NESHeader {
-    prg_rom_size: u8,
-    chr_rom_size: u8,
+    pub prg_rom_size: u8,
+    pub chr_rom_size: u8,
     flags_6: u8,
     flags_7: u8,
     flags_8: u8,
@@ -22,6 +30,7 @@ struct NESHeader {
     padding_14: u8,
     padding_15: u8,
 }
+
 impl NESHeader {
     pub fn new(data: &Vec<u8>) -> Result<NESHeader,String> {
         let magicnum = [ 0x4E, 0x45, 0x53, 0x1A ];
@@ -45,11 +54,11 @@ impl NESHeader {
             padding_15: data[15],
         })
     }
-    pub fn prgsize(&self) -> u8 {
-        return self.prg_rom_size
+    pub fn prgsize(&self) -> usize {
+        return (self.prg_rom_size as usize)<<14
     }
-    pub fn chrsize(&self) -> u8 {
-        return self.chr_rom_size
+    pub fn chrsize(&self) -> usize {
+        return (self.chr_rom_size as usize)<<13
     }
     pub fn mapper(&self) -> u8 {
         return (self.flags_6 >> 4) + (self.flags_7 & 0xF0)
@@ -58,67 +67,79 @@ impl NESHeader {
         return 0x10;
     }
     pub fn prg_rom_end(&self) -> usize {
-        return self.prg_rom_start() + ((self.prg_rom_size as usize)<<14) - 1;
+        return self.prg_rom_start() + self.prgsize() - 1;
+    }
+    pub fn chr_rom_start(&self) -> usize {
+        return self.prg_rom_end() + 1;
+    }
+    pub fn chr_rom_end(&self) -> usize {
+        return self.prg_rom_end() + self.chrsize();
     }
 }
 impl<'a> Cartridge<'a> {
-    pub fn new(name: String) -> Result<Cartridge<'a>,String> {
+    pub fn new(name: String, mainbus: Rc<RefCell<AddressBus<'a>>>, ppubus: Rc<RefCell<AddressBus<'a>>>) -> Result<Cartridge<'a>,String> {
         console_log!("Init Cartridge");
-        let data = AddressBus::new(name)?;
-        Ok(Cartridge { data })
+        Ok(Cartridge { name, mainbus, mainNodes: Vec::new(), ppu_bus: ppubus, ppuNodes: Vec::new() })
     }
     pub fn name(&self) -> String {
-        self.data.name.to_string()
+        self.name.to_string()
     }
     pub fn clock_tick(&mut self) -> Result<(), String> {
+        Ok(())
+    }
+    pub fn register(&mut self) -> Result<(), String> {
+        while self.mainNodes.len() > 0 {
+            self.mainbus.borrow_mut().register_MmioNode(self.mainNodes.pop().unwrap())?;
+        }
+        while self.ppuNodes.len() > 0 {
+            self.ppu_bus.borrow_mut().register_MmioNode(self.ppuNodes.pop().unwrap())?;
+        }
+        Ok(())
+    }
+    pub fn unregister(&mut self) -> Result<(), String> {
+        let mut node = self.mainbus.borrow_mut().unregister_MmioNode_match(("[".to_string() + &self.name + "]").to_string());
+        while node.is_some() {
+            self.mainNodes.push(node.unwrap());
+            node = self.mainbus.borrow_mut().unregister_MmioNode_match(("[".to_string() + &self.name + "]").to_string());
+        }
+        node = self.ppu_bus.borrow_mut().unregister_MmioNode_match(("[".to_string() + &self.name + "]").to_string());        
+        while node.is_some() {
+            self.ppuNodes.push(node.unwrap());
+            node = self.ppu_bus.borrow_mut().unregister_MmioNode_match(("[".to_string() + &self.name + "]").to_string());
+        }
         Ok(())
     }
     pub fn load_nes_file(&mut self, data: &Vec<u8>) -> Result<(), String> {
         let header = NESHeader::new(data)?;
         if header.mapper() == 0 {
-            let mut prgram = MmioNode::new("PRG RAM".to_owned());
+            let mut prgram = MmioNode::new(format!("[{}].PRGRAM",self.name).to_owned());
             prgram.make_ram(0x1FFF)?;
             prgram.add_addr_range_mirrored(0x6000, 0x7FFF, 0)?;
-            self.data.register_MmioNode(prgram)?;
-            let mut prgrom = MmioNode::new("PRG ROM".to_owned());
+            self.mainbus.borrow_mut().register_MmioNode(prgram)?;
 
-            if header.prgsize() == 1 {
+            let mut prgrom = MmioNode::new(format!("[{}].PRGROM",self.name).to_owned());
+            if header.prg_rom_size == 1 {
                 prgrom.make_ram(0x3FFF)?;
                 prgrom.add_addr_range_mirrored(0x8000,0xFFFF,16*1024)?;
                 console_log!("Addr range PRG ROM 16k...");
-            } else if header.prgsize() == 2 {
+            } else if header.prg_rom_size == 2 {
                 prgrom.make_ram(0x7FFF)?;
                 prgrom.add_addr_range(0x8000, 0xFFFF)?;
                 console_log!("Addr range PRG ROM 32k...");
             } else {
                 return Err(format!("Corrupt NES 2.0 header: PRG size was {} for mapper 0",header.prgsize()))
             }
-            console_log!("Loading...");
-            for i in header.prg_rom_start()..=header.prg_rom_end() {
-                prgrom.set((i - header.prg_rom_start()) as u16,data[ i as usize ])?;
-            } 
-            console_log!("Pre-register");
-            self.data.register_MmioNode(prgrom)?;
+            prgrom.bulk_set(0,data[header.prg_rom_start()..=header.prg_rom_end()].to_vec())?;
+            self.mainbus.borrow_mut().register_MmioNode(prgrom)?;
+
+            console_log!("Addr range CHR ROM 8k...");
+            let mut chrrom = MmioNode::new(format!("[{}].CHRROM",self.name).to_owned());
+            chrrom.make_ram(header.chrsize() as u16)?;
+            chrrom.bulk_set(0,data[header.chr_rom_start()..=header.chr_rom_end()].to_vec())?;
+            self.ppu_bus.borrow_mut().register_MmioNode(chrrom)?;
+            
             return Ok(());
         }
         Err(format!("Mapper not implemented: {}", header.mapper()))
-    }
-}
-impl<'a> MmioObject for Cartridge<'a> {
-    fn get(&mut self, addr: u16) -> Result<u8,String> {
-        if addr < 0x4020 {
-            return Err(format!("{} get @{:04X}: Cartridge address space begins at 0x4020",self.data.name, addr).to_string())
-        }
-        self.data.get(addr)
-    }
-
-    fn set(&mut self, addr: u16, val: u8) -> Result<(),String> {
-        if addr < 0x4020 {
-            return Err(format!("{} set @{:04X}={:02X}: Cartridge address space begins at 0x4020",self.data.name, addr, val).to_string())
-        }
-        self.data.set(addr, val)
-    }
-    fn len(&self) -> usize {
-        0xBFE0
     }
 }

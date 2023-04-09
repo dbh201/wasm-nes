@@ -126,7 +126,7 @@ impl<'la> Mos6502<'la> {
         console_log!("Mos6502: Registered {}",newNode.name);
         Ok(())
     }
-    pub fn unregister_MmioNode(&mut self, name: String) -> Result<(),String> {
+    pub fn unregister_MmioNode(&mut self, name: String) -> Option<MmioNode<'la>> {
         self.bus.borrow_mut().unregister_MmioNode(name)
     }
     fn invalid(&mut self) {

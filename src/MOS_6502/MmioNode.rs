@@ -15,17 +15,18 @@ pub enum MmioType {
     UNSET,
     RAM,
     PPU,
-    APU,
-    CART
+    APU
 }
+
+use super::NES_wasm::WASM_PPU_Render;
+
 impl fmt::Display for MmioType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             MmioType::UNSET => write!(f, "UNSET"),
             MmioType::RAM => write!(f, "RAM"),
             MmioType::PPU => write!(f, "PPU"),
-            MmioType::APU => write!(f, "APU"),
-            MmioType::CART => write!(f, "CART"),
+            MmioType::APU => write!(f, "APU")
         }
     }
 }
@@ -34,6 +35,7 @@ pub trait MmioObject {
     fn set(&mut self, addr: u16, val: u8) -> Result<(),String>;
     fn len(&self) -> usize;
 }
+
 pub struct MmioNode<'a> {
     pub(super) name: String,
     pub(super) ownership: Vec<[u16;3]>,
@@ -96,15 +98,6 @@ impl<'a> MmioNode<'a> {
             Err(format!("MmioNode {}: cannot be made APU because it already has a type", self.name))
         }        
     }
-    pub fn insert_cart(&mut self, cart: Cartridge<'a>) -> Result<(),String> {
-        if self.obj_type == MmioType::UNSET {      
-            self.cart = Some(cart);
-            self.obj_type = MmioType::CART;
-            Ok(())
-        } else {
-            Err(format!("MmioNode {}: cannot be made CART because it already has a type", self.name))
-        }        
-    }
     // might use this for cartridges later
     #[allow(dead_code)]
     pub fn rem_addr_range(&mut self, addr: u16) -> Result<(),String> {
@@ -147,7 +140,7 @@ impl<'a> MmioNode<'a> {
         let final_addr: u16;
         if i[2] != 0 {
             final_addr = (addr - i[0]) % i[2];
-            console_log!("Mirror: {:04X} = ({:04X} - {:04X} % {:04X}",final_addr, addr, i[0], i[2]);
+            console_log!("Mirror: {:04X} = ({:04X} - {:04X}) % {:04X}",final_addr, addr, i[0], i[2]);
         } else {
             final_addr = addr - i[0];
         }
@@ -162,21 +155,28 @@ impl<'a> MmioNode<'a> {
                 console_log!("MmioNode {}: get {:04X} returned {}", self.name, addr, val);
                 return Ok(val)
             },
-            MmioType::CART => self.cart.as_mut().unwrap().get(addr),
+            MmioType::PPU => self.ppu.as_mut().unwrap().get(addr),
             _ => Err(format!("MmioNode {}: get attempt @{:04X} but type not yet implemented", self.name, addr))
         }
     }
 
     pub fn set(&mut self, addr: u16, val: u8) -> Result<(), String> {
         match self.obj_type {
-            MmioType::UNSET => Err(format!("MmioNode {}: get attempt @{:04X} but backing store uninitialized", self.name, addr)),
+            MmioType::UNSET => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but backing store uninitialized", self.name, addr, val)),
             MmioType::RAM => {
                 return self.ram.as_mut().unwrap().set(addr, val)
             },
-            MmioType::CART => {
-                return self.cart.as_mut().unwrap().set(addr, val)
-            }
             _ => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but type not yet implemented", self.name, addr, val))
+        }
+    }
+    // Bulk set for loading ROM data
+    pub fn bulk_set(&mut self, addr: u16, data: Vec<u8>) -> Result<(), String> {
+        match self.obj_type {
+            MmioType::UNSET => Err(format!("MmioNode {}: bulk set attempt @{:04X} but backing store uninitialized", self.name, addr)),
+            MmioType::RAM => {
+                return self.ram.as_mut().unwrap().bulk_set(addr, data)
+            },
+            _ => Err(format!("MmioNode {}: bulk set attempt @{:04X} but type not yet implemented", self.name, addr))
         }
     }
     pub fn _clock_tick(&mut self) -> Result<(), String> {
@@ -188,9 +188,6 @@ impl<'a> MmioNode<'a> {
             MmioType::PPU => {
                 return self.ppu.as_mut().unwrap().clock_tick()
             },
-            MmioType::CART => {
-                return self.cart.as_mut().unwrap().clock_tick()
-            }
             _ => {
                 self.tick_error += 1;
                 if self.tick_error % 1024 == 1 {

@@ -34,13 +34,19 @@ impl<'a> AddressBus<'a> {
         self.mmio_table.push( node );
         Ok(())
     }
-    pub fn unregister_MmioNode(&mut self, name: String) -> Result<(),String> {
+    pub fn unregister_MmioNode_match(&mut self, prefix: String) ->Option<MmioNode<'a>> {
+        let index = self.mmio_table.iter().position(|x| x.name.starts_with(&prefix));
+        if index.is_some() {
+            return Some(self.mmio_table.remove(index.unwrap()));
+        }
+        return None
+    }
+    pub fn unregister_MmioNode(&mut self, name: String) -> Option<MmioNode<'a>> {
         let index = self.mmio_table.iter().position(|x| x.name == name);
         if index.is_some() {
-            self.mmio_table.remove(index.unwrap());
-            return Ok(());
+            return Some(self.mmio_table.remove(index.unwrap()));
         }
-        Err(format!("MMU {}: No such MMIO node: {}",self.name, name))
+        return None
     }
 
     // TODO: efficiency improvements to MMIO reading and writing
@@ -49,7 +55,7 @@ impl<'a> AddressBus<'a> {
         for node in self.mmio_table.iter_mut() {
             let final_addr = node.resolve_addr(addr);
             if final_addr != None {
-                console_log!("Final address: {:04X}",final_addr.clone().unwrap());
+                console_log!("{}: Final address: {:04X}", self.name, final_addr.clone().unwrap());
                 let val = node.get(final_addr.unwrap())?;
                 console_log!("Value: {:02X}", val);
                 return Ok(val)

@@ -46,6 +46,14 @@ pub struct PPU<'a> {
     oamdata: [u8;256],
     ppuaddr_byte2: bool,
     ppuscroll_byte2: bool,
+    reg16a: u16,
+    reg16b: u16,
+    reg8a: u8,
+    reg8b: u8,
+    v: u16,
+    t: u16,
+    x: u8,
+
     mmu: Rc<RefCell<AddressBus<'a>>>,
     bus: Rc<RefCell<AddressBus<'a>>>
 }
@@ -64,6 +72,14 @@ impl<'a> PPU<'_> {
             ppudata: 0,
             oamdma: 0,
             
+            reg16a: 0,
+            reg16b: 0,
+            reg8a: 0,
+            reg8b: 0,
+            v: 0,
+            t: 0,
+            x: 0,
+
             oamdata: [0;256], 
             ppuaddr_byte2: false,
             ppuscroll_byte2: false,
@@ -88,17 +104,7 @@ impl<'a> PPU<'_> {
         //TODO: do stuff related to ppumask
         Ok(())
     }
-    pub fn step(&mut self) -> Result<(),String> {
-        // TODO: calculate and possibly render a frame
-        // This might need to be implemented somewhere else in a trait,
-        // so that different rendering engines can be used.
-        Ok(())
-    }
-    pub fn clock_tick(&mut self) -> Result<(), String> {
-        // This may or may not be equivalent to step()
-        // Some things may take more than one clock tick!
-        Ok(())
-    }
+    // Implement clock_tick in a trait in the rendering engine.
     fn clear_vblank(&mut self) {
         self.ppustatus &= !(PPUStatusFlag::VBLANK_STARTED as u8);
     }

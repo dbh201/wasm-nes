@@ -17,23 +17,28 @@ impl RamBank {
         };
          RamBank { data }
     }
+    pub fn bulk_set(&mut self, addr: u16, data: Vec<u8>) -> Result<(), String> {
+        console_log!("Copying {} bytes to {:04X}",data.len(),addr);
+        self.data[addr as usize..(addr as usize)+data.len()].copy_from_slice(data.as_slice());
+        Ok(())
+    }
 }
 impl MmioObject for RamBank {
     fn get(&mut self, addr: u16) -> Result<u8,String> {
         if addr as usize > self.data.len() {
-            Err(format!("get addr {} out of range", addr))
+            Err(format!("get addr @{:X} > max addr {:X}", addr, self.data.len()))
         } else {
-            console_log!("[get {:04X}]:{:02X}", addr, self.data[addr as usize]);
+            //console_log!("[get {:04X}]:{:02X}", addr, self.data[addr as usize]);
             Ok(self.data[addr as usize])
         }
     }
 
     fn set(&mut self, addr: u16, val: u8) -> Result<(),String> {
         if addr as usize > self.data.len() {
-            Err(format!("set addr {} out of range", addr))
+            Err(format!("set addr @{:X}={:02X} > max addr {:X}", addr, val, self.data.len()))
         } else {
             self.data[addr as usize] = val;
-            console_log!("[set {:04X}]:{:02X}", addr, self.data[addr as usize]);
+            //console_log!("[set {:04X}]:{:02X}", addr, self.data[addr as usize]);
             Ok(())
         }
     }

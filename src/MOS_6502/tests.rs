@@ -34,6 +34,8 @@ mod StackInstructions;
 mod SystemInstructions;
 mod TransferInstructions;
 
+mod SuperMarioBros;
+
 
 
 use std::{cell::RefCell, rc::Rc};
@@ -47,7 +49,7 @@ pub use super::Mos6502Debug::AddrMode::*;
 use super::Mos6502Debug::AddrMode;
 use super::AddressBus::AddressBus;
 use super::AddressBus::MemRW;
-use super::console_log;
+use crate::test_console_log as console_log;
 
 // Utility functions
 pub fn t(_cpu: &Mos6502, c: bool, msg: &str) {

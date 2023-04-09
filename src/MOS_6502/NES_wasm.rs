@@ -4,7 +4,7 @@ use js_sys::{Date, Uint8Array};
 use web_sys::XmlHttpRequest;
 use wasm_bindgen::prelude::*;
 
-use super::NES::NES;
+use super::{NES::NES, PPU::PPU};
 
 // We want to still give output from this function, even
 // if console_log is disabled for the other files.
@@ -34,7 +34,7 @@ pub fn run_nes() -> Result<(), JsValue> {
         console_log!("ONLOAD!");
         let resp: Vec<u8> = Uint8Array::new(&onload_buf.borrow_mut().response().ok().unwrap()).to_vec();
         console_log!("Loading cart...");
-        let mut cart = Cartridge::new("Super Mario Bros".to_owned()).unwrap();
+        let mut cart = Cartridge::new("Super Mario Bros".to_owned(),onload_nes.borrow().get_mainbus(),onload_nes.borrow().get_ppu_bus()).unwrap();
         console_log!("Mapping cart of len {:08X}...",&resp.len());
         let ret = cart.load_nes_file(&resp).err();
         if ret.is_some() {
@@ -47,6 +47,10 @@ pub fn run_nes() -> Result<(), JsValue> {
         }
         let length = resp.len(); 
         console_log!("Response length: {}", length);
+        let r = onload_nes.borrow_mut().reset();
+        if r.is_err() {
+            console_log!("Couldn't reset NES: {}", r.unwrap_err());
+        }
         console_log!("NES hardware initialized.");
     });
     request.borrow_mut().set_onload(Some(cb.as_ref().unchecked_ref()));
@@ -68,7 +72,8 @@ pub fn run_nes() -> Result<(), JsValue> {
     let mut frames = 0;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mut nr = n.borrow_mut();
-        if nr.cart_inserted {
+        let mut stop = false;
+        if nr.cart.is_some() {
             idle += elapsed - frame_start;
             frame_start = Date::now();
             clocks = nr.clock;
@@ -85,13 +90,17 @@ pub fn run_nes() -> Result<(), JsValue> {
                 start = elapsed;
                 frames = 0;
                 idle = 0.0;
+                stop = true;
             }
         }
-        request_animation_frame(f.borrow().as_ref().unwrap())
+        if !stop {
+            request_animation_frame(f.borrow().as_ref().unwrap())
+        }
     }) as Box<dyn FnMut()>));
     console_log!("Calling animation closure...");
     request_animation_frame(g.borrow().as_ref().unwrap());
     console_log!("Finishing init...");
+
     return Ok(())
 }
 
@@ -99,4 +108,16 @@ pub fn request_animation_frame(f: &Closure<dyn FnMut()>) {
     web_sys::window().expect("Failed to get window")
         .request_animation_frame(f.as_ref().unchecked_ref())
         .expect("requestAnimationFrame failed");
+}
+pub trait WASM_PPU_Render {
+    fn clock_tick(&mut self) -> Result<(), String>;
+}
+
+impl WASM_PPU_Render for PPU<'_> {
+    fn clock_tick(&mut self) -> Result<(), String> {
+        
+        // This may or may not be equivalent to step()
+        // Some things may take more than one clock tick!
+        Ok(())
+    } 
 }
