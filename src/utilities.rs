@@ -19,3 +19,8 @@ macro_rules! real_console_log {
 macro_rules! dummy_console_log {
     ($($t:tt)*) => ()
 }
+
+#[macro_export]
+macro_rules! test_console_log {
+    ($($t:tt)*) => (println!("{}",&format_args!($($t)*).to_string()))
+}
