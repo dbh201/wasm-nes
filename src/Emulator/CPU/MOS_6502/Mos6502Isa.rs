@@ -221,10 +221,10 @@ pub trait Mos6502Isa {
 }
 impl Mos6502Isa for Mos6502<'_> {
     fn _interrupt(&mut self) -> Result<(), String>{
-        self._psh(self.ps);
         let ret = self.pc - 1;
         self._psh((ret >> 8) as u8);
         self._psh((ret % 256) as u8);
+        self._psh(self.ps);
         self.pc = self._fetch_u16(0xFFFA)?;
         Ok(())
     }
@@ -1342,7 +1342,9 @@ impl Mos6502Isa for Mos6502<'_> {
     fn rti(&mut self) {
         self.cycles = 6;
         self.ps = self._pop();
-        self.pc = 1 + (self._pop() as u16) + ((self._pop() as u16) << 8);
+        let pcl = self._pop() as u16;
+        let pch = (self._pop() as u16) << 8;
+        self.pc = 1 + pcl + pch;
     }
 
     // JSR pushes "return address - 1", so we increment on
