@@ -4,7 +4,6 @@
 // - flags should be set
 
 
-
 use super::Mos6502::{Mos6502,Mos6502Flag};
 use super::super::super::Common::AddressBus::MemRW;
 use super::super::super::console_log;
@@ -217,8 +216,18 @@ pub trait Mos6502Isa {
     fn _addr_abs_y(&mut self, add_cycle_on_page_boundary: bool) -> u16;
     fn _decode_ind_x(&mut self) -> u8;
     fn _addr_ind_x(&mut self) -> u16;
+
+    fn _interrupt(&mut self) -> Result<(), String>;
 }
 impl Mos6502Isa for Mos6502<'_> {
+    fn _interrupt(&mut self) -> Result<(), String>{
+        self._psh(self.ps);
+        let ret = self.pc - 1;
+        self._psh((ret >> 8) as u8);
+        self._psh((ret % 256) as u8);
+        self.pc = self._fetch_u16(0xFFFA)?;
+        Ok(())
+    }
     fn load_isa(&mut self) {
         self.isa[0x21] = &Mos6502Isa::and_ind_x;
         self.isa[0x25] = &Mos6502Isa::and_zp;
@@ -455,7 +464,6 @@ impl Mos6502Isa for Mos6502<'_> {
         if add_cycle_on_page_boundary {
             self._check_page_boundary(addr, self.x);
         }
-        console_log!("Addr: {:04X} + {:02X} = ",addr,self.x);
         addr + (self.x as u16)
     }
 
@@ -608,7 +616,7 @@ impl Mos6502Isa for Mos6502<'_> {
             self.a = ho << 4 + lo;
         } else {
             let res: u16 = (self.a as u16) + (val as u16) + ((self.ps & (Mos6502Flag::C as u8)) as u16);
-            console_log!("a{} c{} i{} = {}",self.a,self.ps & 0x01,val,res);
+            //console_log!("a{} c{} i{} = {}",self.a,self.ps & 0x01,val,res);
             self.ps = (self.ps & !(Mos6502Flag::C as u8)) | if res >= 256 { Mos6502Flag::C as u8 } else { 0 };
             self.a = (res % 256) as u8;
         }
@@ -620,7 +628,7 @@ impl Mos6502Isa for Mos6502<'_> {
             let rel: i8 = self._decode_imm() as i8;
             self._check_page_boundary_rel(self.pc, rel);
             let res: i16 = (self.pc as i16) + (rel as i16);
-            console_log!("pc: {} rel: {} = {}",self.pc, rel, res);
+            //console_log!("pc: {} rel: {} = {}",self.pc, rel, res);
             self.pc = res as u16;
         } else {
             self.pc += 1;

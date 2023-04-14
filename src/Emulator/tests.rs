@@ -5,9 +5,11 @@
     It would be ideal to test all ~130 instruction variants, but this will
     take a lot of code.
 */
-#![allow(dead_code)]
-#![allow(non_snake_case)]
-#![allow(unused_imports)]
+#![cfg(test)]
+#![cfg_attr(test, allow(dead_code))]
+#![cfg_attr(test, allow(non_snake_case))]
+#![cfg_attr(test, allow(unused_imports))]
+#![cfg_attr(test, allow(unused_must_use))]
 // Test modules
 mod ADC;
 mod AND;

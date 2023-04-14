@@ -1,3 +1,8 @@
+#![allow(non_snake_case)]
+// rust claims that associated functions are unused, even if they
+// are public and used elsewhere...
+#![allow(dead_code)]
+
 pub mod Common {
     pub mod AddressBus;
     pub mod AddressNode;
@@ -23,4 +28,4 @@ pub mod System {
 
 pub mod tests;
 
-use crate::dummy_console_log as console_log;
+use crate::real_console_log as console_log;

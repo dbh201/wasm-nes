@@ -1,4 +1,3 @@
-use super::super::super::Common::AddressNode::AddressNode;
 use super::Mos6502Isa::Mos6502Isa;
 use super::Mos6502Debug::Mos6502Debug;
 use super::super::super::Common::AddressBus::{AddressBus, MemRW};
@@ -59,17 +58,18 @@ impl<'la> Mos6502<'la> {
         ret.load_isa();
         Ok(ret)
     }
+
     // Returns a u16 from memory location
     pub fn _fetch_u16(&self, addr: u16) -> Result<u16, String> {
-        //TODO: addr overflows should be handled in some way.
         let lo = self.getmem(addr)?;
         let ho = self.getmem(addr + 1)?;
         Ok(((ho as u16)<<8) + (lo as u16))
     }
-    pub fn _place_u16(&mut self, addr: u16, val: u16) {
+    pub fn _place_u16(&mut self, addr: u16, val: u16) -> Result<(), String>{
         //TODO: addr overflows should be handled in some way.
-        self.setmem(addr, (val % 256) as u8);
-        self.setmem(addr + 1, (val >> 8) as u8);
+        self.setmem(addr, (val % 256) as u8)?;
+        self.setmem(addr + 1, (val >> 8) as u8)?;
+        Ok(())
     }
     pub fn flag(&self,f: Mos6502Flag) -> bool {
         self.ps & (f as u8) != 0
@@ -105,6 +105,13 @@ impl<'la> Mos6502<'la> {
     pub fn _clock_tick(&mut self) -> Result<(),String> {
         // If cycles == 0, the means the previous instruction is complete
         if self.cycles == 0 {
+            let nmi = self.bus.borrow_mut().nmi_flag();
+            if nmi {
+                self._interrupt()?;
+                self.bus.borrow_mut().clear_nmi();
+                // TODO: should we run the interrupt instruction on this tick or the next?
+                return Ok(())
+            }
             let opcode = self.peek_opcode()? as usize;
             self.current_instruction = self.pc;
             self.pc += 1;
@@ -142,10 +149,18 @@ impl fmt::Display for Mos6502<'_> {
 }
 impl MemRW for Mos6502<'_> {
     fn setmem(&mut self, addr: u16, val: u8) -> Result<(), String> {
-        self.bus.borrow_mut().set(addr,val)
+        let resp = self.bus.borrow_mut().set(addr,val);
+        if resp.is_err() {
+            console_log!("CPU MAINBUS: {}",resp.clone().err().unwrap());
+        }
+        return resp
     }
     fn getmem(&self, addr: u16) -> Result<u8, String> {
-        self.bus.borrow_mut().get(addr)
+        let resp = self.bus.borrow_mut().get(addr);
+        if resp.is_err() {
+            console_log!("CPU MAINBUS: {}",resp.clone().err().unwrap());
+        }
+        return resp
     }
 }
 

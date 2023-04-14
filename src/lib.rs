@@ -10,7 +10,11 @@ extern "C" {
 pub fn _log(s: &str) {
     log(s)
 }
-
+use Renderer::NES_wasm::run_nes;
+#[wasm_bindgen(start)]
+pub fn start() -> Result<(),JsValue>{
+    run_nes()
+}
 
 #[macro_export]
 macro_rules! real_console_log {

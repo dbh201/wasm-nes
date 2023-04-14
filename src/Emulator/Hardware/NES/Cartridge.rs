@@ -136,8 +136,20 @@ impl<'a> Cartridge<'a> {
             let mut chrrom = AddressNode::new(format!("[{}].CHRROM",self.name).to_owned());
             chrrom.make_ram(header.chrsize() as u16)?;
             chrrom.bulk_set(0,data[header.chr_rom_start()..=header.chr_rom_end()].to_vec())?;
+            chrrom.add_addr_range(0, 0x1FFF)?;
             self.ppu_bus.borrow_mut().register_AddressNode(chrrom)?;
-            
+
+            console_log!("Mapping VRAM...");
+            let mut vram = AddressNode::new(format!("[{}].VRAM_MAP",self.name).to_owned());
+            vram.make_ram(0x07FF)?;
+            vram.add_addr_range_mirrored(0x2000, 0x3EFF, 0x0800)?;
+            self.ppu_bus.borrow_mut().register_AddressNode(vram)?;
+
+            console_log!("Generating palette...");
+            let mut palette = AddressNode::new(format!("[{}].PALETTE",self.name).to_owned());
+            palette.make_ram(0x001F)?;
+            palette.add_addr_range_mirrored(0x3F00, 0x3FFF, 0x0020)?;
+            self.ppu_bus.borrow_mut().register_AddressNode(palette)?;
             return Ok(());
         }
         Err(format!("Mapper not implemented: {}", header.mapper()))

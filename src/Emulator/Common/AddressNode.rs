@@ -1,8 +1,9 @@
 
 
+
 use super::AddressBus::AddressBus;
 use super::RamBank::RamBank;
-use super::super::Hardware::NES::PPU::PPU;
+use super::super::Hardware::NES::PPU::{PPU};
 use super::super::Hardware::NES::APUJoystick::APUJoystick;
 use super::super::Hardware::NES::Cartridge::Cartridge;
 use super::super::console_log;
@@ -39,7 +40,7 @@ pub struct AddressNode<'a> {
     pub name: String,
     pub ownership: Vec<[u16;3]>,
     ram: Option<RamBank>,
-    ppu: Option<PPU<'a>>,
+    pub ppu: Option<PPU<'a>>,
     apu: Option<APUJoystick>,
     cart: Option<Cartridge<'a>>,
     pub obj_type: AddressType,
@@ -71,9 +72,13 @@ impl<'a> AddressNode<'a> {
             Err(format!("MmioNode {}: cannot be made RAM because it already has a type", self.name))
         }
     }
-    pub fn make_ppu(&mut self, bus: Rc<RefCell<AddressBus<'a>>>, ppu_mmu: Rc<RefCell<AddressBus<'a>>>) -> Result<(),String> {
+    pub fn make_ppu(&mut self, 
+        bus: Rc<RefCell<AddressBus<'a>>>, 
+        ppu_mmu: Rc<RefCell<AddressBus<'a>>>,
+        fb: Rc<RefCell<Vec<u8>>>
+    ) -> Result<(),String> {
         if self.obj_type == AddressType::UNSET {
-            let ppu = PPU::new(bus, ppu_mmu);
+            let ppu = PPU::new(bus, ppu_mmu, fb);
             if ppu.is_err() {
                 return Err(format!("MmioNode {}: PPU init failed: {}",self.name,ppu.err().unwrap()));
             }
@@ -120,13 +125,13 @@ impl<'a> AddressNode<'a> {
         Ok(())
     }
     pub fn get_addr_range(&self, addr: u16) -> Option<&[u16;3]> {
-        console_log!("Scanning for {:04X} in {}...", addr, self.name);
+        //console_log!("Scanning for {:04X} in {}...", addr, self.name);
         for i in self.ownership.iter() {
             if addr >= i[0] && addr <= i[1] {
-                console_log!("Test: {:04X} [{:04X}..{:04X}%{:04X}]  OK", addr,i[0],i[1],i[2]);
+                // console_log!("{}: {:04X} [{:04X}..{:04X}%{:04X}]  OK",self.name, addr,i[0],i[1],i[2]);
                 return Some(i);
             }
-            console_log!("Test: {:04X} [{:04X}..{:04X}%{:04X}] ...", addr,i[0],i[1],i[2]);
+            //console_log!("Test: {:04X} [{:04X}..{:04X}%{:04X}] ...", addr,i[0],i[1],i[2]);
         }
         None
     }
@@ -139,7 +144,7 @@ impl<'a> AddressNode<'a> {
         let final_addr: u16;
         if i[2] != 0 {
             final_addr = (addr - i[0]) % i[2];
-            console_log!("Mirror: {:04X} = ({:04X} - {:04X}) % {:04X}",final_addr, addr, i[0], i[2]);
+            //console_log!("Mirror: {:04X} = ({:04X} - {:04X}) % {:04X}",final_addr, addr, i[0], i[2]);
         } else {
             final_addr = addr - i[0];
         }
@@ -151,10 +156,13 @@ impl<'a> AddressNode<'a> {
             AddressType::UNSET => Err(format!("MmioNode {}: get attempt @{:04X} but backing store uninitialized", self.name, addr)),
             AddressType::RAM => {
                 let val = self.ram.as_mut().unwrap().get(addr)?;
-                console_log!("MmioNode {}: get {:04X} returned {}", self.name, addr, val);
+                //console_log!("MmioNode {}: get {:04X} returned {}", self.name, addr, val);
                 return Ok(val)
             },
-            AddressType::PPU => self.ppu.as_mut().unwrap().get(addr),
+            AddressType::PPU => {
+                //console_log!("Addr bus PPU get");
+                return self.ppu.as_mut().unwrap().get(addr);
+            }
             _ => Err(format!("MmioNode {}: get attempt @{:04X} but type not yet implemented", self.name, addr))
         }
     }
@@ -164,6 +172,10 @@ impl<'a> AddressNode<'a> {
             AddressType::UNSET => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but backing store uninitialized", self.name, addr, val)),
             AddressType::RAM => {
                 return self.ram.as_mut().unwrap().set(addr, val)
+            },
+            AddressType::PPU => {
+                //console_log!("Addr bus PPU set");
+                return self.ppu.as_mut().unwrap().set(addr, val);
             },
             _ => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but type not yet implemented", self.name, addr, val))
         }

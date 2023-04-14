@@ -60,7 +60,7 @@ impl<'a> Mos6502Debug<'a> {
         let param: String;
         match mode {
             AddrMode::ABSOLUTE    => {
-                let p = cpu._fetch_u16(addr+1)? + cpu.x as u16;
+                let p = cpu._fetch_u16(addr+1)? as u16;
                 param = format!("{:04X?} -> {:02X?}",p,cpu.getmem(p));
             },
             AddrMode::ABSOLUTE_X  => {

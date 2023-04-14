@@ -1,14 +1,25 @@
 use super::AddressNode::{AddressNode, AddressType};
-use super::super::console_log;
+//use super::super::console_log;
+use crate::dummy_console_log as console_log;
 
 pub struct AddressBus<'a> {
     pub name: String,
-    pub mmio_table: Vec<AddressNode<'a>>
+    pub mmio_table: Vec<AddressNode<'a>>,
+    nmi: bool,
 }
 impl<'a> AddressBus<'a> {
     pub fn new(name: String) -> Result<AddressBus<'a>,String> {
         let mmio_table = Vec::new();
-        Ok(AddressBus { name, mmio_table })
+        Ok(AddressBus { name, mmio_table, nmi: false })
+    }
+    pub fn set_nmi(&mut self) {
+        self.nmi = true;
+    }
+    pub fn clear_nmi(&mut self) {
+        self.nmi = false;
+    }
+    pub fn nmi_flag(&self) -> bool{
+        self.nmi
     }
     pub fn register_AddressNode(&mut self, node: AddressNode<'a>) -> Result<(),String> {
         console_log!("Registering {}...", node.name);
@@ -78,7 +89,15 @@ impl<'a> AddressBus<'a> {
         for node in self.mmio_table.iter_mut() {
             if node.obj_type == obj_type {
                 if name.is_none() || (name.is_some() && &node.name == name.as_ref().unwrap()) {
-                    return node._clock_tick()
+                    let r = node._clock_tick();
+                    // See if we should trigger an nmi
+                    if obj_type == AddressType::PPU {
+                        let ppu = node.ppu.as_ref().unwrap();
+                        if ppu.get_scanline() == 241 && ppu.get_scanline_cycle() == 1 {
+                            self.set_nmi();
+                        }
+                    }
+                    return r;
                 } 
             }
         }

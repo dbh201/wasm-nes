@@ -2,20 +2,6 @@ use wasm_bindgen::prelude::*;
 
 use web_sys::{WebGlRenderingContext, WebGlProgram, WebGlShader};
 
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-    #[wasm_bindgen(js_namespace = Math)]
-    fn random() -> f32;
-}
-
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
-
-
 #[wasm_bindgen]
 pub struct WebGl2DSoftwareRenderer {
     program: WebGlProgram,

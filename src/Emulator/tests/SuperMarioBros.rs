@@ -13,7 +13,7 @@ fn full_SuperMarioBros() {
     nes.insert_cart(cart);
 
     // Run a million instructions to see if it crashes
-    for i in 0..1_000_000 {
+    for _ in 0..1_000_000 {
         assert!(nes.clock_tick().is_ok());
     }
     assert!(true);
