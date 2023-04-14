@@ -163,6 +163,10 @@ impl<'a> AddressNode<'a> {
                 //console_log!("Addr bus PPU get");
                 return self.ppu.as_mut().unwrap().get(addr);
             }
+            AddressType::APU => {
+                //console_log!("Addr bus PPU get");
+                return self.apu.as_mut().unwrap().get(addr);
+            }
             _ => Err(format!("MmioNode {}: get attempt @{:04X} but type not yet implemented", self.name, addr))
         }
     }
@@ -176,6 +180,10 @@ impl<'a> AddressNode<'a> {
             AddressType::PPU => {
                 //console_log!("Addr bus PPU set");
                 return self.ppu.as_mut().unwrap().set(addr, val);
+            },
+            AddressType::APU => {
+                //console_log!("Addr bus PPU set");
+                return self.apu.as_mut().unwrap().set(addr, val);
             },
             _ => Err(format!("MmioNode {}: set attempt @{:04X}={:02X} but type not yet implemented", self.name, addr, val))
         }
