@@ -455,7 +455,7 @@ impl Mos6502Isa for Mos6502<'_> {
     fn _decode_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u8 {
         let addr = self._addr_abs_x(add_cycle_on_page_boundary);
         let r = self.getmem(addr).unwrap();
-        console_log!("{}",r);
+        //console_log!("{}",r);
         r
     }
     fn _addr_abs_x(&mut self, add_cycle_on_page_boundary: bool) -> u16 {
@@ -515,7 +515,7 @@ impl Mos6502Isa for Mos6502<'_> {
         if add_cycle_on_page_boundary {
             self._check_page_boundary(addr, self.y);
         }
-        console_log!("addr {:X} + {:X} from [{:X}]", addr, self.y, t);
+        //console_log!("addr {:X} + {:X} from [{:X}]", addr, self.y, t);
         addr + (self.y as u16)
     }
     fn _check_page_boundary(&mut self, addr: u16, off: u8) {
@@ -1074,7 +1074,7 @@ impl Mos6502Isa for Mos6502<'_> {
         }
         self.pc = self.getmem(l_addr).unwrap() as u16 + ((self.getmem(h_addr).unwrap() as u16)<<8);
 
-        console_log!("{:X},{:X} -> {:X}", l_addr, h_addr, self.pc);
+        //console_log!("{:X},{:X} -> {:X}", l_addr, h_addr, self.pc);
     }
 
     fn jsr(&mut self) {
@@ -1349,7 +1349,6 @@ impl Mos6502Isa for Mos6502<'_> {
 
     // JSR pushes "return address - 1", so we increment on
     // popping it from the stack.
-
     fn rts(&mut self) {
         self.cycles = 6;
         self.pc = 1 + (self._pop() as u16) + ((self._pop() as u16) << 8);
