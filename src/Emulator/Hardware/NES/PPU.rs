@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 use super::super::super::Common::{AddressBus::AddressBus, AddressNode::AddressObject};
-use crate::dummy_console_log as console_log;
+use crate::real_console_log as console_log;
 use std::{cell::RefCell, rc::Rc};
 
 #[repr(u8)]
@@ -38,9 +38,9 @@ pub struct PPU<'a> {
     ppustatus: u8,
     oamaddr: u8,
     ppuaddr: u8,
-    vmemaddr: u16,
     ppudata: u8,
     oamdma: u8,
+    ppuscroll_x: u8,
 
     pub oamdata:    [u8;256],
     pub _oambuf:    u8,
@@ -48,16 +48,6 @@ pub struct PPU<'a> {
     pub regsprp:    [[u8;2];8],    //sprite pattern table data
     pub regspra:    [u8;8],    //sprite attribute latches
     pub regsprx:    [u8;8],    //sprite x position
-
-
-
-    ppuscroll_x: u8,
-    ppuscroll_y: u8,
-
-    // write latches
-    // TODO: are these the same latch in the real machine?
-    ppuaddr_byte2: bool,
-    ppuscroll_y_write: bool,
 
     //tile registers
     pub regtilel: u16,
@@ -67,9 +57,14 @@ pub struct PPU<'a> {
     pub regpala: u8,
     pub regpalb: u8,
 
+    // internal registers
     vram: u16,
     tvram: u16,
     finex: u8,
+    ppu_write_latch: bool,
+    
+
+
     pub clock: usize,
 
     pub iter1: usize, // generic iterators for storing indices between clock cycles
@@ -124,9 +119,7 @@ impl<'a> PPU<'_> {
             ppustatus:  0,
 
             ppuscroll_x:  0,
-            ppuscroll_y:  0,
             ppuaddr:    0,
-            vmemaddr:   0,
             ppudata:    0,
 
             oamaddr:    0,
@@ -156,8 +149,7 @@ impl<'a> PPU<'_> {
             iter3:      0,
 
             oamdata:    [0;256], 
-            ppuaddr_byte2: false,
-            ppuscroll_y_write: false,
+            ppu_write_latch: false,
             ppubus,
             mainbus,
             framebuffer,
@@ -168,7 +160,7 @@ impl<'a> PPU<'_> {
         return Ok(ret)
     }
     pub fn ctrl_flag(&self, f: PPUCtrlFlag) -> bool {
-        console_log!("TESTING CTRL FLAG...");
+        //console_log!("TESTING CTRL FLAG...");
         self.ppuctrl & f as u8 != 0
     }
     pub fn mask_flag(&self, f: PPUMaskFlag) -> bool {
@@ -178,7 +170,7 @@ impl<'a> PPU<'_> {
         self.ppustatus & f as u8 != 0
     }
     fn check_ctrl(&mut self) -> Result<(),String> {
-        //TODO: do stuff related to ppuctrl
+        self.tvram = ( self.tvram & !0x0C00 ) | (((self.ppuctrl & 0x03) as u16)<<10);
         Ok(())
     }
     fn check_mask(&mut self) -> Result<(),String> {
@@ -193,10 +185,10 @@ impl<'a> PPU<'_> {
     }
     fn clear_latches(&mut self) {
         self.ppustatus &= !(PPUStatusFlag::VBLANK_STARTED as u8);
-        self.ppuscroll_y_write = false;
+        self.ppu_write_latch = false;
     }
     pub fn get_scanline(&self) -> usize {
-        self.clock / 341
+        (self.clock / 341) % 262
     }
     pub fn get_scanline_cycle(&self) -> usize {
         self.clock % 341
@@ -340,63 +332,80 @@ impl<'a> PPU<'_> {
         } 
         return Ok(())
     }
+    fn fetch_tile(&mut self) -> Result<(), String> {
+        let bus = self.ppubus.clone();
+        let mut bus = bus.borrow_mut();
+        let tile_address = ((bus.get(0x2000 | (self.vram & 0x0FFF))? as u16)<<4) 
+            | ((self.ctrl_flag(PPUCtrlFlag::BG_TABLE_SEL) as u16)<<12);
+        let attr_address = (bus.get(0x23C0 | (self.vram & 0x0C00) | ((self.vram >> 4) & 0x38) | ((self.vram >> 2) & 0x07))? as u16)<<8;
+        let tile_pattern_addr = ((bus.get(tile_address)? as u16)<<3) + ((self.vram >> 12) & 0x07);
+        self.regtilel |= bus.get(tile_pattern_addr)? as u16;
+        self.regtileh |= bus.get(tile_pattern_addr+8)? as u16;
+        self.regpala = bus.get(attr_address)?;
+        self.regpalb = bus.get(attr_address+1)?;
+//        console_log!("Tile: {:04X} Attr: {:04X} Patt: {:04X}\nRegTile: H:{:02X} L:{:02X} Palette: A:{:02X} B:{:02X}",
+//            tile_address, attr_address, tile_pattern_addr, self.regtileh, self.regtilel, self.regpala, self.regpalb);
+        Ok(())
+    }
     pub fn process_bg_tile(&mut self) -> Result<(), String> {
         if self.scanline < 240 {
             if self.scanline_cycle < 257 {
-                let mut bus = self.ppubus.borrow_mut();
                 let pixel = (((self.regtilel&0x80)>>7) + ((self.regtileh&0x80)>>6)) as u8;
                 if pixel != 0 {
                     self.pixel = Some(pixel);
                 }
-                self.finex += 1;
-                if self.finex >= 0x08 {
-                    self.finex %= 0x08;
-                    if self.vram & 0x001F == 0x001F {
-                        self.vram &= !(0x001F);
-                        self.vram ^= 0x0400;
-                    } else {
-                        self.vram += 1;
-                    }
-                    let tile_address = (bus.get(0x2000 | (self.vram & 0x0FFF))? as u16)<<8;
-                    let attr_address = (bus.get(0x2000 | (self.vram & 0x0FFF))? as u16)<<8;
-                    let tile_pattern_addr = (bus.get(tile_address)? as u16)<<3;
-                    self.regtilel |= bus.get(tile_pattern_addr)? as u16;
-                    self.regtileh |= bus.get(tile_pattern_addr+8)? as u16;
-                    self.regpala = bus.get(attr_address)?;
-                    self.regpalb = bus.get(attr_address+1)?;
-                }
+            }
+        }
+        else if self.scanline == 261 && self.scanline_cycle == 340 {
+            // Retrieve new frame tiles for next frame here
+            /*
+            self.tvram = ((self.ppuctrl as u16 & 0x03)<<10) | 
+                (self.ppuscroll_x as u16 & 0xF8)        |
 
+                ((self.ppuscroll_y as u16 & 0x03)<<12)  |
+                ((self.ppuscroll_y as u16 & 0x1C)<<5)   |
+                ((self.ppuscroll_y as u16 & 0xC0)<<8);
+                 */
+            self.vram = self.tvram;
+        }
+        if self.scanline_cycle >= 328 || self.scanline_cycle <= 256 {
+            self.finex += 1;
+            if self.finex >= 0x08 {
+                self.finex %= 0x08;
+                if self.vram & 0x001F == 0x001F {
+                    self.vram &= !(0x001F);
+                    self.vram ^= 0x0400;
+                } else {
+                    self.vram += 1;
+                }
             }
             if self.scanline_cycle == 256 {
                 // Y position increment @ last pixel
-                self.vram += 0b1000000000000;
-                if self.vram & 0x8000 != 0 {
-                    let mut cy = (self.vram & 0x03E0) >> 5;
-                    self.vram &= !0x83E0;
-                    if self.vram & 0x0800 == 0 && cy == 0x1D {
+                self.vram += 0b1000000000000; // fine y increment
+                if self.vram & 0x8000 != 0 { // fine y overflowed?
+                    let mut cy = (self.vram & 0x03E0) >> 5; // retrieve coarse y
+                    self.vram &= !0x83E0; // zero out coarse y (0x03E0) and unset overflow bit (0x8000)
+
+                    // NOTE: coarse y values > 29 (0x1D) are out of bounds, but
+                    // can still technically be set.
+                    if cy == 0x1D { 
                         cy = 0;
                         self.vram ^= 0x0800;
                     } else if cy < 0x1F {
                         cy += 1;
-                    } 
+                    } else {
+                        cy = 0;
+                    }
                     self.vram |= cy << 5;
                 }
             }
+            self.fetch_tile();
         }
-        else if self.scanline == 261 && self.scanline_cycle == 340 {
-            // Retrieve new frame tiles
-            self.tvram = ((self.ppuctrl as u16 & 0x03)<<10) | 
-                (self.ppuscroll_x as u16 & 0xF8)        | 
-                ((self.ppuscroll_y as u16 & 0x03)<<12)  |
-                ((self.ppuscroll_y as u16 & 0x1C)<<5)   |
-                ((self.ppuscroll_y as u16 & 0xC0)<<8);
-            self.vram = self.tvram;
-        }
-    
         return Ok(())
     }
     pub fn clock_tick(&mut self) -> Result<(), String> {
         if self.scanline_cycle != 0 {
+            self.pixel = None;
             self.fetch_data()?;
             self.process_bg_tile()?;
             self.process_sprites()?;
@@ -406,7 +415,6 @@ impl<'a> PPU<'_> {
                 self.pixel = Some(self.ppubus.borrow_mut().get(0x3F00)?);
             }
             if self.ntsc {
-
                 if self.scanline == 241 && self.scanline_cycle == 1 {
                     self.set_vblank();
                 }
@@ -418,25 +426,45 @@ impl<'a> PPU<'_> {
     }
     pub fn clock_modulo(&self) -> usize {
         if self.ntsc {
-            89341 + 89342
+            89342
         } else {
             106392
         }
     }
     pub fn increment_clock(&mut self) {
-        self.clock += 1;
+        if self.odd_frame && self.scanline == 261 && self.scanline_cycle == 339 {
+            self.clock += 2;
+        } else {
+            self.clock += 1;
+        }
         self.clock %= self.clock_modulo();
         self.scanline = self.get_scanline();
         self.scanline_cycle = self.get_scanline_cycle();
+        
     }
-    fn increment_vmemaddr(&mut self) {
+    fn increment_vram_addr(&mut self) {
         if self.ctrl_flag(PPUCtrlFlag::INCREMENT_MODE) {
-            self.vmemaddr += 32;
-            self.vmemaddr %= 0x4000;
+            self.vram += 32; // coarse y scroll
         } else {
-            self.vmemaddr += 1;
-            self.vmemaddr %= 0x4000;
+            self.vram += 1;  // coarse x scroll
         }
+        self.vram %= 0x4000;
+    }
+    fn load_tvram_high(&mut self, val: u8) {
+        self.tvram = (self.tvram & 0x00FF) |
+        ((val as u16 & 0x03)<<12)  |
+        ((val as u16 & 0x1C)<<5)   |
+        ((val as u16 & 0xC0)<<8);
+        console_log!("Loaded TVRAM high: {:02X} => {:04X}", val, self.tvram);
+    }
+    fn load_tvram_low(&mut self, val: u8) {
+        self.ppuscroll_x = val & 0x07;
+        self.tvram = (self.tvram & 0xFF00) | (((val & (!0x07)) as u16)>>3);
+        console_log!("Loaded TVRAM low: {:02X} => {:04X}", val, self.tvram);
+    }
+    fn load_vram_addr(&mut self, val: u8) {
+        self.vram = ((self.ppuaddr as u16) + ((val as u16)<<8))%0x4000;
+        console_log!("Loaded VRAM with: {:04X}",self.vram);
     }
 }
 pub trait PPU_Renderer {
@@ -457,14 +485,14 @@ impl AddressObject for PPU<'_> {
             },
             0x0007 => {
                 let ret: u8;
-                if self.vmemaddr < 0x3F00 {
+                if self.vram < 0x3F00 {
                     ret = self.ppudata;
-                    self.ppudata = self.ppubus.borrow_mut().get(self.vmemaddr)?;
+                    self.ppudata = self.ppubus.borrow_mut().get(self.vram)?;
                 } else {
-                    ret = self.ppubus.borrow_mut().get(self.vmemaddr)?;
-                    self.ppudata = self.ppubus.borrow_mut().get(self.vmemaddr - 0x1000)?;
+                    ret = self.ppubus.borrow_mut().get(self.vram)?;
+                    self.ppudata = self.ppubus.borrow_mut().get(self.vram - 0x1000)?;
                 }
-                self.increment_vmemaddr();
+                self.increment_vram_addr();
                 return Ok(ret)
             },
             _ => Err(format!("PPU: attempt to get mmio @{:04X} failed (not owned)",addr))
@@ -490,28 +518,30 @@ impl AddressObject for PPU<'_> {
                 Ok(())
             }
             0x0005 => {
-                if !self.ppuscroll_y_write {
-                    self.ppuscroll_y_write = true;
-                    self.ppuscroll_x = val;
+                if !self.ppu_write_latch {
+                    self.load_tvram_low(val);
+                    self.ppu_write_latch = true;
                 } else {
-                    self.ppuscroll_y = val;
+                    self.load_tvram_high(val);
+                    self.ppu_write_latch = false;
                 }
                 Ok(())
             }
             0x0006 => {
-                if !self.ppuaddr_byte2 {
-                    self.ppuaddr_byte2 = true;
-                    self.ppuaddr = val;
+                if !self.ppu_write_latch {
+                    self.tvram = ((val & 0x3F) as u16) << 8;
+                    self.ppu_write_latch = true;
                 } else {
-                    self.vmemaddr = (((self.ppuaddr as u16)<<8) + (val as u16))%0x4000;
-                    self.ppuaddr_byte2 = false;
+                    self.tvram |= val as u16;
+                    self.vram = self.tvram;
+                    self.ppu_write_latch = false;
                 }
                 Ok(())
             },
             0x0007 => {
-                console_log!("PPU: Wrote {:02X} to {:04X}",val, self.vmemaddr);
-                let ret = self.ppubus.borrow_mut().set(self.vmemaddr,val);
-                self.increment_vmemaddr();
+                console_log!("PPU: Wrote {:02X} to {:04X}", val, self.vram);
+                let ret = self.ppubus.borrow_mut().set(self.vram,val);
+                self.increment_vram_addr();
                 return ret
             },
             0x2014 => {
