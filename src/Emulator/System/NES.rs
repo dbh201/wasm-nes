@@ -81,12 +81,18 @@ impl<'nes> NES<'nes> {
         let clocks = self.clock;
         console_log!("Beginning loop...");
         while !self.mainbus.borrow().nmi_flag(){
-            self.clock_tick()?;
+            let resp = self.clock_tick();
+            if resp.is_err() {
+                console_log!("---{}\n{}",resp.err().unwrap(),self.cpu)
+            }
         }
         console_log!("Non-nmi ticks: {}",self.clock - clocks);
         let clocks = self.clock;
         while self.mainbus.borrow().nmi_flag() {
-            self.clock_tick()?;
+            let resp = self.clock_tick();
+            if resp.is_err() {
+                console_log!("---{}\n{}",resp.err().unwrap(),self.cpu)
+            }
         }
         console_log!("nmi ticks: {}",self.clock - clocks);
         Ok(())
