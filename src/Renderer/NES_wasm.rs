@@ -73,7 +73,8 @@ pub fn run_nes() -> Result<(), JsValue> {
     let mut idle: f64 = 0.0;
     let mut clocks = 0;
     console_log!("Initializing SoftwareRenderer...");
-    let mut rnd = WebGl2DSoftwareRenderer::new("nes-canvas", 256, 240)?;
+    let rnd_rc = Rc::new(RefCell::new(WebGl2DSoftwareRenderer::new("nes-canvas", 256, 240)?));
+    let rnd_frame_rc = rnd_rc.clone();
     console_log!("SoftwareRenderer initialized.");
     console_log!("Preparing animation closure...");
     let f = Rc::new(RefCell::new(None));
@@ -87,8 +88,7 @@ pub fn run_nes() -> Result<(), JsValue> {
     let pause_frame_rc = pause.clone();
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mut nr = n.borrow_mut();
-        console_log!("Checking for cart...");
-        if nr.cart.is_some() && !*pause_anim_rc.borrow(){
+        if  !*pause_anim_rc.borrow() && nr.cart.is_some() {
             console_log!("Cart found...");
             idle += elapsed - frame_start;
             frame_start = Date::now();
@@ -103,13 +103,13 @@ pub fn run_nes() -> Result<(), JsValue> {
             console_log!("Cycles this frame: {} ({})", clocks, nr.clock);
             //console_log!("Updating clock...");
             console_log!("Generating frame...");
-            let ret = rnd.generate_frame(nr.get_framebuffer()).err();
+            let ret = rnd_rc.borrow_mut().generate_frame(nr.get_framebuffer()).err();
             //console_log!("POST");
             if ret.is_some() {
                 console_log!("{}", ret.unwrap());
             }
             console_log!("Drawing frame...");
-            let ret = rnd.draw().err();
+            let ret = rnd_rc.borrow_mut().draw().err();
             if ret.is_some() {
                 console_log!("Some kind of draw error...");
                 console_log!("{}", ret.unwrap().as_string().unwrap());
@@ -191,6 +191,14 @@ pub fn run_nes() -> Result<(), JsValue> {
             } else {
                 console_log!("Executing:\n{}\n...",nes_frame_rc.borrow().cpu);
                 console_log!("Clock ticks: {}",nes_frame_rc.borrow().clock);
+            }
+            let resp = rnd_frame_rc.borrow_mut().generate_frame(nes_frame_rc.borrow().get_framebuffer()).err();
+            if resp.is_some() {
+                console_log!("framegen: {}",resp.unwrap());
+            }
+            let resp = rnd_frame_rc.borrow_mut().draw().err();
+            if resp.is_some() {
+                console_log!("framedraw error: {}",resp.unwrap().as_string().unwrap_or("Unknown".to_string()));
             }
         } else {
             console_log!("Cannot step frame!");
